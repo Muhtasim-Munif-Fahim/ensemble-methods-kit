@@ -13,12 +13,16 @@ from .utils import (
     r2_score,
     train_test_split,
 )
+from .bagging import BaggingClassifier
+from .random_forest import RandomForestClassifier
 
 __version__ = "0.1.0"
 
 __all__ = [
     "__version__",
     "DecisionTree",
+    "BaggingClassifier",
+    "RandomForestClassifier",
     "accuracy_score",
     "log_loss",
     "mean_squared_error",
