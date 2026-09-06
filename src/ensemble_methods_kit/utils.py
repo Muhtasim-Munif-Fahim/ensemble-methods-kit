@@ -7,6 +7,7 @@ classification (gini or entropy impurity) and squared-error regression.
 
 from __future__ import annotations
 
+import inspect
 from typing import List, Optional, Sequence, Union
 
 import numpy as np
@@ -17,11 +18,32 @@ __all__ = [
     "mean_squared_error",
     "r2_score",
     "log_loss",
+    "clone_estimator",
     "DecisionTree",
 ]
 
 
 ArrayLike = Union[Sequence, np.ndarray]
+
+
+def clone_estimator(estimator):
+    """Return an unfitted shallow copy of an estimator.
+
+    The clone reuses the ``__init__`` parameters read back from the instance,
+    which works for every toolkit class that stores its constructor arguments
+    as attributes with matching names.  Nested estimator parameters (e.g. a
+    ``base_estimator``) are shared by reference rather than deep-copied.
+    """
+    cls = type(estimator)
+    params = {}
+    for name, param in inspect.signature(cls.__init__).parameters.items():
+        if name == "self":
+            continue
+        if hasattr(estimator, name):
+            params[name] = getattr(estimator, name)
+        elif param.default is not inspect.Parameter.empty:
+            params[name] = param.default
+    return cls(**params)
 
 
 def train_test_split(
@@ -304,7 +326,7 @@ class DecisionTree:
         counts = np.bincount(y, minlength=self.n_classes_ if self.n_classes_ else 0)
         node.value = counts
         if (
-            depth >= self.max_depth
+            (self.max_depth is not None and depth >= self.max_depth)
             or n_samples < self.min_samples_split
             or self._impurity(y) == 0.0
             or n_samples == 1
@@ -331,7 +353,7 @@ class DecisionTree:
         n_samples = X.shape[0]
         node.value = float(np.mean(y))
         if (
-            depth >= self.max_depth
+            (self.max_depth is not None and depth >= self.max_depth)
             or n_samples < self.min_samples_split
             or self._variance(y) == 0.0
             or n_samples == 1

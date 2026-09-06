@@ -8,6 +8,7 @@ decision tree so that the whole workflow is dependency-light and easy to follow.
 from .utils import (
     DecisionTree,
     accuracy_score,
+    clone_estimator,
     log_loss,
     mean_squared_error,
     r2_score,
@@ -20,6 +21,11 @@ from .gradient_boosting import (
     GradientBoostingRegressor,
 )
 from .voting import VotingClassifier
+from .stacking import (
+    BlendingClassifier,
+    LogisticRegression,
+    StackingClassifier,
+)
 
 __version__ = "0.1.0"
 
@@ -31,7 +37,11 @@ __all__ = [
     "GradientBoostingClassifier",
     "GradientBoostingRegressor",
     "VotingClassifier",
+    "StackingClassifier",
+    "BlendingClassifier",
+    "LogisticRegression",
     "accuracy_score",
+    "clone_estimator",
     "log_loss",
     "mean_squared_error",
     "r2_score",
