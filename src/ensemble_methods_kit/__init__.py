@@ -15,6 +15,11 @@ from .utils import (
 )
 from .bagging import BaggingClassifier
 from .random_forest import RandomForestClassifier
+from .gradient_boosting import (
+    GradientBoostingClassifier,
+    GradientBoostingRegressor,
+)
+from .voting import VotingClassifier
 
 __version__ = "0.1.0"
 
@@ -23,6 +28,9 @@ __all__ = [
     "DecisionTree",
     "BaggingClassifier",
     "RandomForestClassifier",
+    "GradientBoostingClassifier",
+    "GradientBoostingRegressor",
+    "VotingClassifier",
     "accuracy_score",
     "log_loss",
     "mean_squared_error",
