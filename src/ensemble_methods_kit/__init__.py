@@ -8,6 +8,7 @@ decision tree so that the whole workflow is dependency-light and easy to follow.
 from .utils import (
     DecisionTree,
     accuracy_score,
+    bootstrap_sample,
     clone_estimator,
     confusion_matrix,
     f1_score,
@@ -47,6 +48,7 @@ __all__ = [
     "LogisticRegression",
     "AdaBoostClassifier",
     "accuracy_score",
+    "bootstrap_sample",
     "clone_estimator",
     "confusion_matrix",
     "f1_score",

@@ -14,6 +14,7 @@ import numpy as np
 
 __all__ = [
     "train_test_split",
+    "bootstrap_sample",
     "accuracy_score",
     "precision_score",
     "recall_score",
@@ -74,6 +75,51 @@ def f1_score(y_true: ArrayLike, y_pred: ArrayLike, zero_division: float = 0.0) -
     if p + r == 0:
         return zero_division
     return 2.0 * p * r / (p + r)
+
+
+def bootstrap_sample(
+    X: ArrayLike,
+    y: ArrayLike,
+    *,
+    n_samples: int | None = None,
+    replace: bool = True,
+    random_state: int | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Draw a bootstrap (resampled with replacement) sample from (X, y).
+
+    Each row is selected independently; with ``replace=True`` some rows appear
+    multiple times and others are absent (the OOB set). When ``replace=False``
+    the function performs a shuffled subsample without replacement. The row
+    pairings between ``X`` and ``y`` are always preserved.
+
+    Parameters
+    ----------
+    X, y:
+        Feature matrix and target vector with matching first-dimension lengths.
+    n_samples:
+        Number of rows to draw. Defaults to ``len(X)``.
+    replace:
+        Whether to sample with replacement (bootstrap) or without (subsample).
+    random_state:
+        Seed for reproducibility.
+    """
+    X = np.asarray(X)
+    y = np.asarray(y)
+    if X.shape[0] != y.shape[0]:
+        raise ValueError("X and y must have the same number of rows")
+    n = X.shape[0]
+    if n == 0:
+        raise ValueError("cannot bootstrap an empty dataset")
+    if n_samples is None:
+        n_samples = n
+    if not isinstance(n_samples, int) or n_samples < 1:
+        raise ValueError("n_samples must be a positive integer")
+    if not replace and n_samples > n:
+        raise ValueError("n_samples cannot exceed the dataset size when replace=False")
+
+    rng = np.random.default_rng(random_state)
+    indices = rng.integers(0, n, size=n_samples) if replace else rng.permutation(n)[:n_samples]
+    return X[indices], y[indices]
 
 
 def clone_estimator(estimator):
