@@ -20,6 +20,7 @@ from .utils import (
 )
 from .bagging import BaggingClassifier
 from .random_forest import RandomForestClassifier
+from .adaboost import AdaBoostClassifier
 from .gradient_boosting import (
     GradientBoostingClassifier,
     GradientBoostingRegressor,
@@ -44,6 +45,7 @@ __all__ = [
     "StackingClassifier",
     "BlendingClassifier",
     "LogisticRegression",
+    "AdaBoostClassifier",
     "accuracy_score",
     "clone_estimator",
     "confusion_matrix",
