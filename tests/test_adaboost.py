@@ -9,20 +9,12 @@ from ensemble_methods_kit import AdaBoostClassifier, accuracy_score
 
 
 def _linear_separable() -> tuple:
-    """Two well-separated blobs."""
     rng = np.random.default_rng(42)
     n = 50
     X0 = rng.normal(0, 1, size=(n, 2))
     X1 = rng.normal(5, 1, size=(n, 2))
     X = np.vstack([X0, X1])
     y = np.array([0] * n + [1] * n)
-    return X, y
-
-
-def _xor_pattern() -> tuple:
-    """Non-linearly-separable XOR pattern."""
-    X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]], dtype=float)
-    y = np.array([0, 1, 1, 0])
     return X, y
 
 
