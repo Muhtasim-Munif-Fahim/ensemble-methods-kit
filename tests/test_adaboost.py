@@ -77,3 +77,26 @@ def test_reproducibility() -> None:
     preds1 = clf1.predict(X)
     preds2 = clf2.predict(X)
     np.testing.assert_array_equal(preds1, preds2)
+
+
+def test_feature_importances_shape() -> None:
+    X, y = _linear_separable()
+    clf = AdaBoostClassifier(n_estimators=10, random_state=42)
+    clf.fit(X, y)
+    importances = clf.feature_importances_
+    assert importances.shape == (2,)
+    assert abs(importances.sum() - 1.0) < 1e-6
+
+
+def test_feature_importances_predicts_informative_feature() -> None:
+    X, y = _linear_separable()
+    clf = AdaBoostClassifier(n_estimators=20, random_state=0)
+    clf.fit(X, y)
+    importances = clf.feature_importances_
+    assert importances[0] > importances[1]
+
+
+def test_feature_importances_before_fit_raises() -> None:
+    clf = AdaBoostClassifier(n_estimators=5)
+    with pytest.raises(RuntimeError, match="not fitted"):
+        _ = clf.feature_importances_

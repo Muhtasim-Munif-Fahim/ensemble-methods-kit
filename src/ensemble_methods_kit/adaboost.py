@@ -47,6 +47,7 @@ class AdaBoostClassifier:
         self.estimators_: List[DecisionTree] = []
         self.weights_: List[float] = []
         self.classes_: Optional[np.ndarray] = None
+        self._n_features: Optional[int] = None
 
     def fit(self, X, y) -> "AdaBoostClassifier":
         X = np.asarray(X, dtype=float)
@@ -58,6 +59,7 @@ class AdaBoostClassifier:
             raise ValueError("AdaBoost supports binary classification only")
 
         n = X.shape[0]
+        self._n_features = X.shape[1]
         pos_label = self.classes_[1]
         y_binary = (y == pos_label).astype(int)
 
@@ -125,3 +127,23 @@ class AdaBoostClassifier:
     @property
     def estimator_weights_(self) -> List[float]:
         return self.weights_
+
+    @property
+    def feature_importances_(self) -> np.ndarray:
+        """Average weighted feature usage across all stumps.
+
+        Each stump's splitting feature accumulates the stump's alpha weight.
+        Features never selected by any stump receive a score of 0.0.
+        The returned array is normalized to sum to 1.
+        """
+        if not self.estimators_ or self._n_features is None:
+            raise RuntimeError("Estimator is not fitted yet")
+        importances = np.zeros(self._n_features)
+        for est, alpha in zip(self.estimators_, self.weights_):
+            root = est._tree
+            if root is not None and not root.is_leaf and root.feature is not None:
+                importances[root.feature] += alpha
+        total = importances.sum()
+        if total > 0:
+            importances /= total
+        return importances
