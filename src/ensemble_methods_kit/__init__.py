@@ -9,9 +9,13 @@ from .utils import (
     DecisionTree,
     accuracy_score,
     clone_estimator,
+    confusion_matrix,
+    f1_score,
     log_loss,
     mean_squared_error,
+    precision_score,
     r2_score,
+    recall_score,
     train_test_split,
 )
 from .bagging import BaggingClassifier
@@ -42,8 +46,12 @@ __all__ = [
     "LogisticRegression",
     "accuracy_score",
     "clone_estimator",
+    "confusion_matrix",
+    "f1_score",
     "log_loss",
     "mean_squared_error",
+    "precision_score",
     "r2_score",
+    "recall_score",
     "train_test_split",
 ]

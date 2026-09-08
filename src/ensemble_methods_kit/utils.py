@@ -15,6 +15,9 @@ import numpy as np
 __all__ = [
     "train_test_split",
     "accuracy_score",
+    "precision_score",
+    "recall_score",
+    "f1_score",
     "mean_squared_error",
     "r2_score",
     "log_loss",
@@ -24,6 +27,53 @@ __all__ = [
 
 
 ArrayLike = Union[Sequence, np.ndarray]
+
+
+def confusion_matrix(y_true: ArrayLike, y_pred: ArrayLike) -> np.ndarray:
+    """Return a 2x2 confusion matrix for binary labels.
+
+    Layout: ``[[tn, fp], [fn, tp]]`` where positive class is the larger
+    label value.
+    """
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+    labels = np.unique(np.concatenate([y_true, y_pred]))
+    if len(labels) == 1:
+        labels = np.array([labels[0], labels[0] + 1])
+    pos = labels[-1]
+    neg = labels[0]
+    tp = float(np.sum((y_true == pos) & (y_pred == pos)))
+    tn = float(np.sum((y_true == neg) & (y_pred == neg)))
+    fp = float(np.sum((y_true == neg) & (y_pred == pos)))
+    fn = float(np.sum((y_true == pos) & (y_pred == neg)))
+    return np.array([[tn, fp], [fn, tp]])
+
+
+def precision_score(y_true: ArrayLike, y_pred: ArrayLike, zero_division: float = 0.0) -> float:
+    """Precision = TP / (TP + FP)."""
+    cm = confusion_matrix(y_true, y_pred)
+    tp = cm[1, 1]
+    fp = cm[0, 1]
+    denom = tp + fp
+    return float(tp / denom) if denom > 0 else zero_division
+
+
+def recall_score(y_true: ArrayLike, y_pred: ArrayLike, zero_division: float = 0.0) -> float:
+    """Recall = TP / (TP + FN)."""
+    cm = confusion_matrix(y_true, y_pred)
+    tp = cm[1, 1]
+    fn = cm[1, 0]
+    denom = tp + fn
+    return float(tp / denom) if denom > 0 else zero_division
+
+
+def f1_score(y_true: ArrayLike, y_pred: ArrayLike, zero_division: float = 0.0) -> float:
+    """F1 = 2 * (precision * recall) / (precision + recall)."""
+    p = precision_score(y_true, y_pred, zero_division=zero_division)
+    r = recall_score(y_true, y_pred, zero_division=zero_division)
+    if p + r == 0:
+        return zero_division
+    return 2.0 * p * r / (p + r)
 
 
 def clone_estimator(estimator):
