@@ -238,7 +238,6 @@ class BlendingClassifier:
             X = X.reshape(-1, 1)
         y = np.asarray(y)
         self.classes_ = np.unique(y)
-        n_classes = self.classes_.shape[0]
         X_tr, X_va, y_tr, y_va = _tts(
             X, y, test_size=self.validation_fraction,
             random_state=self.random_state, stratify=y,

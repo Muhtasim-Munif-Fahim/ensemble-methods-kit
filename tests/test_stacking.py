@@ -12,7 +12,6 @@ from ensemble_methods_kit import (
     RandomForestClassifier,
     StackingClassifier,
     accuracy_score,
-    r2_score,
 )
 from ensemble_methods_kit.utils import train_test_split
 
