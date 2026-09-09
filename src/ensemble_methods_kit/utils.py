@@ -179,8 +179,6 @@ def roc_auc_score(y_true: ArrayLike, y_score: ArrayLike) -> float:
     if pos_scores.size == 0 or neg_scores.size == 0:
         raise ValueError("y_true must contain both positive and negative samples")
     diff = pos_scores[:, None] - neg_scores[None, :]
-    n_pos = pos_scores.shape[0]
-    n_neg = neg_scores.shape[0]
     auc = float(np.mean(np.sign(diff)) + 1.0) / 2.0
     return auc
 
