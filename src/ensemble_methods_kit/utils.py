@@ -122,6 +122,32 @@ def bootstrap_sample(
     return X[indices], y[indices]
 
 
+def balanced_sample_weights(y: ArrayLike) -> np.ndarray:
+    """Return class-balanced sample weights for imbalanced classification.
+
+    Each sample receives weight ``n_samples / (n_classes * count(class))``
+    so that the effective weight of each class sums to the same value. This
+    is the standard inverse-frequency balancing used by scikit-learn's
+    ``class_weight='balanced'``.
+
+    Parameters
+    ----------
+    y:
+        Target vector of class labels.
+    """
+    y = np.asarray(y)
+    if y.size == 0:
+        raise ValueError("cannot compute weights for an empty target vector")
+    classes, counts = np.unique(y, return_counts=True)
+    if classes.shape[0] < 2:
+        raise ValueError("balanced_sample_weights requires at least 2 classes")
+    n = y.size
+    n_classes = classes.shape[0]
+    class_weights = n / (n_classes * counts)
+    weight_map = {cls: float(w) for cls, w in zip(classes, class_weights)}
+    return np.array([weight_map[yi] for yi in y], dtype=float)
+
+
 def clone_estimator(estimator):
     """Return an unfitted shallow copy of an estimator.
 
