@@ -148,6 +148,43 @@ def balanced_sample_weights(y: ArrayLike) -> np.ndarray:
     return np.array([weight_map[yi] for yi in y], dtype=float)
 
 
+def roc_auc_score(y_true: ArrayLike, y_score: ArrayLike) -> float:
+    """Return the area under the ROC curve for binary classification.
+
+    The score is computed by sorting predictions by descending score and
+    computing the Mann-Whitney U statistic, which equals the probability
+    that a randomly chosen positive sample scores higher than a randomly
+    chosen negative sample. Ties contribute 0.5.
+
+    Parameters
+    ----------
+    y_true:
+        Binary ground-truth labels (0 or 1).
+    y_score:
+        Continuous prediction scores (higher = more likely positive).
+    """
+    y_true = np.asarray(y_true)
+    y_score = np.asarray(y_score, dtype=float)
+    if y_true.shape != y_score.shape:
+        raise ValueError("y_true and y_score must have the same shape")
+    if y_true.size == 0:
+        raise ValueError("at least one sample is required")
+    labels = np.unique(y_true)
+    if labels.shape[0] != 2:
+        raise ValueError("roc_auc_score requires exactly 2 classes in y_true")
+    pos = labels[1]
+    neg = labels[0]
+    pos_scores = y_score[y_true == pos]
+    neg_scores = y_score[y_true == neg]
+    if pos_scores.size == 0 or neg_scores.size == 0:
+        raise ValueError("y_true must contain both positive and negative samples")
+    diff = pos_scores[:, None] - neg_scores[None, :]
+    n_pos = pos_scores.shape[0]
+    n_neg = neg_scores.shape[0]
+    auc = float(np.mean(np.sign(diff)) + 1.0) / 2.0
+    return auc
+
+
 def clone_estimator(estimator):
     """Return an unfitted shallow copy of an estimator.
 

@@ -18,6 +18,7 @@ from .utils import (
     precision_score,
     r2_score,
     recall_score,
+    roc_auc_score,
     train_test_split,
 )
 from .bagging import BaggingClassifier
@@ -59,5 +60,6 @@ __all__ = [
     "precision_score",
     "r2_score",
     "recall_score",
+    "roc_auc_score",
     "train_test_split",
 ]
