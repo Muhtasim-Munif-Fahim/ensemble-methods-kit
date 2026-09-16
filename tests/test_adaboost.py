@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from ensemble_methods_kit import AdaBoostClassifier, accuracy_score
+from ensemble_methods_kit.utils import train_test_split
 
 
 def _linear_separable() -> tuple:
@@ -42,12 +43,35 @@ def test_predict_proba_shape() -> None:
     np.testing.assert_allclose(proba.sum(axis=1), 1.0)
 
 
-def test_multiclass_raises() -> None:
-    X = np.array([[0.0], [1.0], [2.0], [3.0]])
-    y = np.array([0, 1, 2, 3])
+def test_multiclass_fit_predict(multiclass_cls) -> None:
+    X, y = multiclass_cls
+    Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
+    clf = AdaBoostClassifier(n_estimators=40, random_state=1)
+    clf.fit(Xtr, ytr)
+    assert clf.classes_.tolist() == [0, 1, 2]
+    assert clf.n_classes_ == 3
+    acc = accuracy_score(yte, clf.predict(Xte))
+    assert acc > 0.85
+    proba = clf.predict_proba(Xte)
+    assert proba.shape == (len(yte), 3)
+    np.testing.assert_allclose(proba.sum(axis=1), 1.0)
+
+
+def test_single_class_raises() -> None:
+    X = np.array([[0.0], [1.0], [2.0]])
+    y = np.array([1, 1, 1])
     clf = AdaBoostClassifier(n_estimators=5)
-    with pytest.raises(ValueError, match="binary"):
+    with pytest.raises(ValueError, match="at least 2 classes"):
         clf.fit(X, y)
+
+
+def test_fit_resets_estimators() -> None:
+    X, y = _linear_separable()
+    clf = AdaBoostClassifier(n_estimators=5, random_state=42)
+    clf.fit(X, y)
+    n_first = len(clf.estimators_)
+    clf.fit(X, y)
+    assert len(clf.estimators_) == n_first
 
 
 def test_n_estimators_validation() -> None:
@@ -58,6 +82,11 @@ def test_n_estimators_validation() -> None:
 def test_learning_rate_validation() -> None:
     with pytest.raises(ValueError, match="learning_rate"):
         AdaBoostClassifier(learning_rate=-1.0)
+
+
+def test_max_depth_validation() -> None:
+    with pytest.raises(ValueError, match="max_depth"):
+        AdaBoostClassifier(max_depth=0)
 
 
 def test_weights_length() -> None:

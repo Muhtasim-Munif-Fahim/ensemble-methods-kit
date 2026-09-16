@@ -14,6 +14,8 @@ easy to read and extend.
   variance reduction for regression, plus feature sub-sampling.
 - **BaggingClassifier** — bootstrap aggregating of decision trees.
 - **RandomForestClassifier** — bagging with random feature sub-sampling.
+- **AdaBoostClassifier** — SAMME adaptive boosting of decision-tree weak
+  learners with a weighted majority vote.
 - **GradientBoostingClassifier / Regressor** — additive trees fit on the loss
   gradient (log-loss / least-squares).
 - **VotingClassifier** — soft and hard voting over arbitrary estimators.
@@ -69,6 +71,7 @@ ensemble-methods-kit/
 │   ├── utils.py           # metrics, split, DecisionTree
 │   ├── bagging.py
 │   ├── random_forest.py
+│   ├── adaboost.py
 │   ├── gradient_boosting.py
 │   ├── voting.py
 │   ├── stacking.py

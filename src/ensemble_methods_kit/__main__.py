@@ -16,6 +16,7 @@ from typing import List, Optional, Tuple
 import numpy as np
 
 from . import (
+    AdaBoostClassifier,
     BaggingClassifier,
     BlendingClassifier,
     DecisionTree,
@@ -105,6 +106,13 @@ def _build_classifiers() -> List[Tuple[str, object]]:
                                        random_state=_DEMO_RANDOM_STATE),
         ),
         (
+            "AdaBoost",
+            AdaBoostClassifier(
+                n_estimators=50, learning_rate=1.0, max_depth=1,
+                random_state=_DEMO_RANDOM_STATE,
+            ),
+        ),
+        (
             "Voting(soft)",
             VotingClassifier(
                 estimators=[
@@ -146,13 +154,28 @@ def _build_sklearn_baselines():
     """Return scikit-learn baselines when available, else an empty list."""
     if not _maybe_use_sklearn():
         return []
+    from sklearn.ensemble import AdaBoostClassifier as SKAda
     from sklearn.ensemble import GradientBoostingClassifier as SKGBC
     from sklearn.ensemble import RandomForestClassifier as SKRF
+    from sklearn.tree import DecisionTreeClassifier as SKTree
+
+    tree = SKTree(max_depth=1)
+    try:
+        sklearn_adaboost = SKAda(
+            estimator=tree, n_estimators=50, learning_rate=1.0,
+            random_state=_DEMO_RANDOM_STATE,
+        )
+    except TypeError:
+        sklearn_adaboost = SKAda(
+            base_estimator=tree, n_estimators=50, learning_rate=1.0,
+            random_state=_DEMO_RANDOM_STATE,
+        )
 
     return [
         ("sklearn-RandomForest", SKRF(n_estimators=30, max_depth=5, random_state=_DEMO_RANDOM_STATE)),
         ("sklearn-GradientBoosting", SKGBC(n_estimators=60, learning_rate=0.1, max_depth=2,
                                            random_state=_DEMO_RANDOM_STATE)),
+        ("sklearn-AdaBoost", sklearn_adaboost),
     ]
 
 
