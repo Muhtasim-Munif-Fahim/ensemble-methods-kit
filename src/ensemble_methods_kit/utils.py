@@ -315,8 +315,12 @@ class DecisionTree:
     max_features :
         Number of features to consider per split (int, ``"sqrt"`` or
         ``"log2"``).  ``None`` uses all features.
+    splitter :
+        ``"best"`` searches every distinct threshold (CART).  ``"random"``
+        draws one uniform threshold per candidate feature and keeps the
+        strongest of those random splits (Extra-Trees).
     random_state :
-        Seed for reproducible feature sub-sampling.
+        Seed for reproducible feature sub-sampling and random thresholds.
     """
 
     def __init__(
@@ -326,13 +330,17 @@ class DecisionTree:
         min_samples_split: int = 2,
         min_impurity_decrease: float = 0.0,
         max_features: Optional[Union[int, str]] = None,
+        splitter: str = "best",
         random_state: Optional[int] = None,
     ) -> None:
+        if splitter not in ("best", "random"):
+            raise ValueError('splitter must be "best" or "random"')
         self.criterion = criterion
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
         self.min_impurity_decrease = min_impurity_decrease
         self.max_features = max_features
+        self.splitter = splitter
         self.random_state = random_state
         self.classes_: Optional[np.ndarray] = None
         self.n_classes_: Optional[int] = None
@@ -399,7 +407,66 @@ class DecisionTree:
             k = max(1, min(k, n_features))
         return rng.choice(n_features, size=k, replace=False)
 
-    # ------------------------------------------------------- best split search
+    # ------------------------------------------------------- split search
+    def _find_split(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        feature_indices: np.ndarray,
+        rng: np.random.Generator,
+    ) -> Optional[dict]:
+        if self.splitter == "random":
+            return self._random_split(X, y, feature_indices, rng)
+        return self._best_split(X, y, feature_indices)
+
+    def _random_split(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        feature_indices: np.ndarray,
+        rng: np.random.Generator,
+    ) -> Optional[dict]:
+        """Pick the best of one uniformly random threshold per candidate feature.
+
+        This is the Extra-Trees split rule of Geurts, Ernst and Wehenkel
+        (2006): each considered feature gets a single cut drawn uniformly
+        from its observed range, then the highest-gain random cut is kept.
+        """
+        n_samples = X.shape[0]
+        parent_impurity = self._impurity(y)
+        best_gain = self.min_impurity_decrease
+        best: Optional[dict] = None
+
+        for fi in feature_indices:
+            x_f = X[:, fi]
+            xmin = float(np.min(x_f))
+            xmax = float(np.max(x_f))
+            if xmin == xmax:
+                continue
+            threshold = float(rng.uniform(xmin, xmax))
+            left_mask = x_f <= threshold
+            nL = int(left_mask.sum())
+            nR = n_samples - nL
+            if nL == 0 or nR == 0:
+                continue
+            gain = (
+                parent_impurity
+                - (nL / n_samples) * self._impurity(y[left_mask])
+                - (nR / n_samples) * self._impurity(y[~left_mask])
+            )
+            if gain > best_gain:
+                best_gain = gain
+                order = np.concatenate(
+                    [np.flatnonzero(left_mask), np.flatnonzero(~left_mask)]
+                )
+                best = {
+                    "feature": int(fi),
+                    "threshold": threshold,
+                    "order": order,
+                    "split_pos": nL,
+                }
+        return best
+
     def _best_split(
         self,
         X: np.ndarray,
@@ -491,7 +558,7 @@ class DecisionTree:
             node.is_leaf = True
             return node
         feature_indices = self._feature_indices(X.shape[1], rng)
-        best = self._best_split(X, y, feature_indices)
+        best = self._find_split(X, y, feature_indices, rng)
         if best is None:
             node.is_leaf = True
             return node
@@ -518,7 +585,7 @@ class DecisionTree:
             node.is_leaf = True
             return node
         feature_indices = self._feature_indices(X.shape[1], rng)
-        best = self._best_split(X, y, feature_indices)
+        best = self._find_split(X, y, feature_indices, rng)
         if best is None:
             node.is_leaf = True
             return node

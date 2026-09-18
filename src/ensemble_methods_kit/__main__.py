@@ -20,6 +20,7 @@ from . import (
     BaggingClassifier,
     BlendingClassifier,
     DecisionTree,
+    ExtraTreesClassifier,
     GradientBoostingClassifier,
     GradientBoostingRegressor,
     RandomForestClassifier,
@@ -100,6 +101,7 @@ def _build_classifiers() -> List[Tuple[str, object]]:
         ("DecisionTree", DecisionTree(criterion="gini", max_depth=5, random_state=_DEMO_RANDOM_STATE)),
         ("Bagging", BaggingClassifier(n_estimators=25, max_samples=1.0, random_state=_DEMO_RANDOM_STATE)),
         ("RandomForest", RandomForestClassifier(n_estimators=30, max_depth=5, random_state=_DEMO_RANDOM_STATE)),
+        ("ExtraTrees", ExtraTreesClassifier(n_estimators=30, max_depth=5, random_state=_DEMO_RANDOM_STATE)),
         (
             "GradientBoosting",
             GradientBoostingClassifier(n_estimators=60, learning_rate=0.1, max_depth=2,
@@ -155,6 +157,7 @@ def _build_sklearn_baselines():
     if not _maybe_use_sklearn():
         return []
     from sklearn.ensemble import AdaBoostClassifier as SKAda
+    from sklearn.ensemble import ExtraTreesClassifier as SKET
     from sklearn.ensemble import GradientBoostingClassifier as SKGBC
     from sklearn.ensemble import RandomForestClassifier as SKRF
     from sklearn.tree import DecisionTreeClassifier as SKTree
@@ -173,6 +176,7 @@ def _build_sklearn_baselines():
 
     return [
         ("sklearn-RandomForest", SKRF(n_estimators=30, max_depth=5, random_state=_DEMO_RANDOM_STATE)),
+        ("sklearn-ExtraTrees", SKET(n_estimators=30, max_depth=5, random_state=_DEMO_RANDOM_STATE)),
         ("sklearn-GradientBoosting", SKGBC(n_estimators=60, learning_rate=0.1, max_depth=2,
                                            random_state=_DEMO_RANDOM_STATE)),
         ("sklearn-AdaBoost", sklearn_adaboost),
