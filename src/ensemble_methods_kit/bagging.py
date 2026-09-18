@@ -66,6 +66,7 @@ class BaggingClassifier:
             min_samples_split=2,
             min_impurity_decrease=0.0,
             max_features="sqrt",
+            splitter="best",
             random_state=seed,
         )
         if isinstance(base, DecisionTree):
@@ -75,6 +76,7 @@ class BaggingClassifier:
                 min_samples_split=base.min_samples_split,
                 min_impurity_decrease=base.min_impurity_decrease,
                 max_features=base.max_features,
+                splitter=getattr(base, "splitter", "best"),
                 random_state=seed,
             )
         n_features = getattr(self, "_n_features_in_", None)
