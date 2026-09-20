@@ -6,7 +6,7 @@ from typing import Optional
 
 import numpy as np
 
-from .utils import DecisionTree
+from .utils import DecisionTree, mean_decrease_impurity
 
 __all__ = ["BaggingClassifier"]
 
@@ -127,3 +127,16 @@ class BaggingClassifier:
     def oob_score_(self) -> float:
         """Convenience not implemented; use the demo for evaluation."""
         raise AttributeError("oob_score_ is not supported")
+
+    @property
+    def feature_importances_(self) -> np.ndarray:
+        """Normalized Mean Decrease Impurity (MDI) importances.
+
+        Averages the impurity-decrease importances of the fitted trees and
+        renormalizes so the vector sums to 1.  Inherited by
+        :class:`~ensemble_methods_kit.random_forest.RandomForestClassifier`
+        and :class:`~ensemble_methods_kit.extra_trees.ExtraTreesClassifier`.
+        """
+        if not self.estimators_:
+            raise RuntimeError("Estimator is not fitted yet")
+        return mean_decrease_impurity(self.estimators_)

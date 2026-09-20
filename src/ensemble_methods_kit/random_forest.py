@@ -18,6 +18,9 @@ class RandomForestClassifier(BaggingClassifier):
     of features at each split, which decorrelates the trees and reduces the
     variance of the averaged prediction.
 
+    After :meth:`fit`, :attr:`feature_importances_` is the Mean Decrease
+    Impurity (MDI) ranking of the input features, averaged over the trees.
+
     Parameters
     ----------
     n_estimators :

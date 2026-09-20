@@ -20,6 +20,9 @@ class ExtraTreesClassifier(BaggingClassifier):
     the default of fitting every tree on the full sample (``bootstrap=False``)
     this is the Extra-Trees algorithm of Geurts, Ernst and Wehenkel (2006).
 
+    After :meth:`fit`, :attr:`feature_importances_` is the Mean Decrease
+    Impurity (MDI) ranking of the input features, averaged over the trees.
+
     Parameters
     ----------
     n_estimators :

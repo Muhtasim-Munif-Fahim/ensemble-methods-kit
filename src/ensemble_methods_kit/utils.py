@@ -23,6 +23,7 @@ __all__ = [
     "r2_score",
     "log_loss",
     "clone_estimator",
+    "mean_decrease_impurity",
     "DecisionTree",
 ]
 
@@ -291,7 +292,16 @@ def log_loss(
 class _Node:
     """A single node in the decision tree."""
 
-    __slots__ = ("feature", "threshold", "left", "right", "value", "is_leaf")
+    __slots__ = (
+        "feature",
+        "threshold",
+        "left",
+        "right",
+        "value",
+        "is_leaf",
+        "n_samples",
+        "impurity",
+    )
 
     def __init__(self) -> None:
         self.feature: Optional[int] = None
@@ -300,6 +310,77 @@ class _Node:
         self.right: Optional["_Node"] = None
         self.value = None
         self.is_leaf = False
+        self.n_samples: int = 0
+        self.impurity: float = 0.0
+
+
+def _accumulate_impurity_decrease(node: _Node, importances: np.ndarray) -> None:
+    """Add weighted impurity decrease of ``node`` and its descendants."""
+    if node is None or node.is_leaf:
+        return
+    if node.feature is None or node.left is None or node.right is None:
+        return
+    decrease = (
+        node.n_samples * node.impurity
+        - node.left.n_samples * node.left.impurity
+        - node.right.n_samples * node.right.impurity
+    )
+    importances[node.feature] += max(decrease, 0.0)
+    _accumulate_impurity_decrease(node.left, importances)
+    _accumulate_impurity_decrease(node.right, importances)
+
+
+def _tree_impurity_decrease(tree: "DecisionTree") -> np.ndarray:
+    """Unnormalized Mean Decrease Impurity vector for a single fitted tree."""
+    if tree._tree is None or tree.n_features_in_ is None:
+        raise RuntimeError("Estimator is not fitted yet")
+    importances = np.zeros(tree.n_features_in_, dtype=float)
+    _accumulate_impurity_decrease(tree._tree, importances)
+    root_n = tree._tree.n_samples
+    if root_n > 0:
+        importances /= root_n
+    return importances
+
+
+def mean_decrease_impurity(estimators, normalize: bool = True) -> np.ndarray:
+    """Mean Decrease Impurity (MDI) feature importances.
+
+    For a tree this is the total weighted impurity decrease attributed to
+    each feature, following Breiman's Gini / impurity importance (the same
+    definition as scikit-learn's ``feature_importances_``).  For an
+    ensemble the per-tree vectors are averaged.
+
+    Parameters
+    ----------
+    estimators :
+        A fitted :class:`DecisionTree` or a sequence of fitted trees
+        (for example ``RandomForestClassifier.estimators_``).
+    normalize :
+        When ``True`` (the default) the returned vector sums to 1 if any
+        split produced a positive impurity decrease.  A tree or forest
+        that never split returns a zero vector.
+    """
+    if isinstance(estimators, DecisionTree):
+        trees = [estimators]
+    else:
+        trees = list(estimators)
+    if not trees:
+        raise RuntimeError("Estimator is not fitted yet")
+    # Normalize each tree first so every estimator votes equally, then
+    # average (sklearn's forest.feature_importances_ definition).
+    vectors = []
+    for tree in trees:
+        raw = _tree_impurity_decrease(tree)
+        total = float(np.sum(raw))
+        if total > 0.0:
+            raw = raw / total
+        vectors.append(raw)
+    stacked = np.mean(vectors, axis=0)
+    if normalize:
+        total = float(np.sum(stacked))
+        if total > 0.0:
+            stacked = stacked / total
+    return np.asarray(stacked, dtype=float)
 
 
 class DecisionTree:
@@ -321,6 +402,9 @@ class DecisionTree:
         strongest of those random splits (Extra-Trees).
     random_state :
         Seed for reproducible feature sub-sampling and random thresholds.
+
+    After :meth:`fit`, :attr:`feature_importances_` is the normalized Mean
+    Decrease Impurity (MDI) ranking of the input features.
     """
 
     def __init__(
@@ -344,6 +428,7 @@ class DecisionTree:
         self.random_state = random_state
         self.classes_: Optional[np.ndarray] = None
         self.n_classes_: Optional[int] = None
+        self.n_features_in_: Optional[int] = None
         self.is_classifier_: bool = True
         self._tree: Optional[_Node] = None
 
@@ -353,6 +438,7 @@ class DecisionTree:
         if X.ndim == 1:
             X = X.reshape(-1, 1)
         y = np.asarray(y)
+        self.n_features_in_ = X.shape[1]
         self.is_classifier_ = self.criterion in ("gini", "entropy")
         rng = np.random.default_rng(self.random_state)
         if self.is_classifier_:
@@ -549,6 +635,8 @@ class DecisionTree:
         n_samples = X.shape[0]
         counts = np.bincount(y, minlength=self.n_classes_ if self.n_classes_ else 0)
         node.value = counts
+        node.n_samples = n_samples
+        node.impurity = self._impurity(y)
         if (
             (self.max_depth is not None and depth >= self.max_depth)
             or n_samples < self.min_samples_split
@@ -576,6 +664,8 @@ class DecisionTree:
         node = _Node()
         n_samples = X.shape[0]
         node.value = float(np.mean(y))
+        node.n_samples = n_samples
+        node.impurity = self._impurity(y)
         if (
             (self.max_depth is not None and depth >= self.max_depth)
             or n_samples < self.min_samples_split
@@ -630,3 +720,14 @@ class DecisionTree:
             total = counts.sum()
             proba[i] = counts / total if total > 0 else 0.0
         return proba
+
+    @property
+    def feature_importances_(self) -> np.ndarray:
+        """Normalized Mean Decrease Impurity (MDI) importances.
+
+        Each internal node contributes
+        ``n_node * impurity - n_left * impurity_left - n_right * impurity_right``
+        to the feature used at that split.  The vector is then divided by
+        the root sample count and renormalized to sum to 1.
+        """
+        return mean_decrease_impurity(self)
