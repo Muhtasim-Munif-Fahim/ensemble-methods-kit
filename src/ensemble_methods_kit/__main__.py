@@ -203,12 +203,14 @@ def run_demo(output_path: str = "demo_report.md", use_sklearn: bool = True) -> s
         sections.append(f"Class names: {[str(c) for c in target_names]}\n")
 
     rows: List[Tuple[str, float, float, float, float]] = []
+    fitted = {}
     models = _build_classifiers() + ( _build_sklearn_baselines() if use_sklearn else [])
 
     for name, model in models:
         t0 = time.perf_counter()
         model.fit(X_tr, y_tr)
         elapsed = time.perf_counter() - t0
+        fitted[name] = model
         preds = model.predict(X_te)
         proba = model.predict_proba(X_te) if hasattr(model, "predict_proba") else None
         acc = accuracy_score(y_te, preds)
@@ -226,6 +228,33 @@ def run_demo(output_path: str = "demo_report.md", use_sklearn: bool = True) -> s
         )
     )
     sections.append(f"\n**Best model:** {rows[0][0]} (accuracy {rows[0][1]:.4f}).\n")
+
+    mdi_models = [
+        (label, fitted[label])
+        for label in ("RandomForest", "ExtraTrees")
+        if label in fitted and hasattr(fitted[label], "feature_importances_")
+    ]
+    if mdi_models:
+        if use_sklearn and _maybe_use_sklearn():
+            feature_names = ["sepal length (cm)", "sepal width (cm)",
+                             "petal length (cm)", "petal width (cm)"]
+        else:
+            feature_names = [f"x{i}" for i in range(X.shape[1])]
+        if len(feature_names) != X.shape[1]:
+            feature_names = [f"x{i}" for i in range(X.shape[1])]
+        header = "| Feature | " + " | ".join(name for name, _ in mdi_models) + " |"
+        sep = "|" + "|".join(["---"] * (1 + len(mdi_models))) + "|"
+        body = []
+        importances = [model.feature_importances_ for _, model in mdi_models]
+        for j, feat in enumerate(feature_names):
+            cells = " | ".join(f"{imp[j]:.4f}" for imp in importances)
+            body.append(f"| {feat} | {cells} |")
+        sections.append("\n### Mean Decrease Impurity (RandomForest / ExtraTrees)\n")
+        sections.append(
+            "Impurity-based feature importances for the kit's tree ensembles, "
+            "normalized to sum to 1.\n"
+        )
+        sections.append("\n" + header + "\n" + sep + "\n" + "\n".join(body) + "\n")
 
     # ---- regression
     Xr, yr, reg_name = _load_regression(_DEMO_RANDOM_STATE)
@@ -255,6 +284,8 @@ def run_demo(output_path: str = "demo_report.md", use_sklearn: bool = True) -> s
         "it is an optional extra (`pip install -e .[demo]`).\n"
         "- Tree depth, learning rate, number of estimators and split fractions are "
         "deliberately modest to keep the demo fast and deterministic.\n"
+        "- RandomForest and ExtraTrees report Mean Decrease Impurity "
+        "(`feature_importances_`) for the classification features.\n"
     )
 
     report = "\n".join(sections)

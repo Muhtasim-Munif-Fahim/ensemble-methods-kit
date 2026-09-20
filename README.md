@@ -11,11 +11,14 @@ easy to read and extend.
 ## Features
 
 - **DecisionTree** — CART with gini / entropy splits for classification and
-  variance reduction for regression, plus feature sub-sampling.
+  variance reduction for regression, plus feature sub-sampling and Mean
+  Decrease Impurity (`feature_importances_`).
 - **BaggingClassifier** — bootstrap aggregating of decision trees.
 - **RandomForestClassifier** — bagging with random feature sub-sampling.
+  Exposes impurity-based `feature_importances_` (Mean Decrease Impurity).
 - **ExtraTreesClassifier** — extremely randomized trees: random feature
   sub-sampling plus random split thresholds on the shared DecisionTree.
+  Same MDI `feature_importances_` as Random Forest.
 - **AdaBoostClassifier** — SAMME adaptive boosting of decision-tree weak
   learners with a weighted majority vote.
 - **GradientBoostingClassifier / Regressor** — additive trees fit on the loss
@@ -51,7 +54,14 @@ X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.25, random_state=42,
 clf = RandomForestClassifier(n_estimators=25, max_depth=5, random_state=0)
 clf.fit(X_tr, y_tr)
 print("accuracy:", accuracy_score(y_te, clf.predict(X_te)))
+print("MDI importances:", clf.feature_importances_)
 ```
+
+`feature_importances_` is the Mean Decrease Impurity (MDI) ranking: each
+split contributes its weighted impurity decrease to the chosen feature.
+`RandomForestClassifier` and `ExtraTreesClassifier` average that vector
+over their trees (also available as `mean_decrease_impurity(estimators)`).
+AdaBoost keeps its own SAMME-weighted split-usage importances.
 
 Run the command-line demo (writes `examples/output/demo_report.md`):
 
