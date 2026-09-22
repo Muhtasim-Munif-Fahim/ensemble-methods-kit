@@ -23,6 +23,7 @@ from . import (
     ExtraTreesClassifier,
     GradientBoostingClassifier,
     GradientBoostingRegressor,
+    HistogramGradientBoostingClassifier,
     RandomForestClassifier,
     StackingClassifier,
     VotingClassifier,
@@ -108,6 +109,13 @@ def _build_classifiers() -> List[Tuple[str, object]]:
                                        random_state=_DEMO_RANDOM_STATE),
         ),
         (
+            "HistGradientBoosting",
+            HistogramGradientBoostingClassifier(
+                n_estimators=40, learning_rate=0.1, max_depth=3, max_bins=64,
+                random_state=_DEMO_RANDOM_STATE,
+            ),
+        ),
+        (
             "AdaBoost",
             AdaBoostClassifier(
                 n_estimators=50, learning_rate=1.0, max_depth=1,
@@ -159,6 +167,7 @@ def _build_sklearn_baselines():
     from sklearn.ensemble import AdaBoostClassifier as SKAda
     from sklearn.ensemble import ExtraTreesClassifier as SKET
     from sklearn.ensemble import GradientBoostingClassifier as SKGBC
+    from sklearn.ensemble import HistGradientBoostingClassifier as SKHGB
     from sklearn.ensemble import RandomForestClassifier as SKRF
     from sklearn.tree import DecisionTreeClassifier as SKTree
 
@@ -179,6 +188,10 @@ def _build_sklearn_baselines():
         ("sklearn-ExtraTrees", SKET(n_estimators=30, max_depth=5, random_state=_DEMO_RANDOM_STATE)),
         ("sklearn-GradientBoosting", SKGBC(n_estimators=60, learning_rate=0.1, max_depth=2,
                                            random_state=_DEMO_RANDOM_STATE)),
+        ("sklearn-HistGradientBoosting", SKHGB(
+            max_iter=40, learning_rate=0.1, max_depth=3, max_bins=64,
+            random_state=_DEMO_RANDOM_STATE,
+        )),
         ("sklearn-AdaBoost", sklearn_adaboost),
     ]
 
@@ -278,8 +291,9 @@ def run_demo(output_path: str = "demo_report.md", use_sklearn: bool = True) -> s
     # ---- notes
     sections.append("\n## 3. Notes\n")
     sections.append(
-        "- All estimators are implemented from scratch on a single NumPy CART "
-        "decision tree; the only hard dependency is `numpy`.\n"
+        "- Estimators are implemented from scratch in NumPy. Bagging-style models "
+        "share one CART decision tree; histogram gradient boosting grows Newton "
+        "trees on binned features. The only hard dependency is `numpy`.\n"
         "- scikit-learn is used solely for datasets and baseline comparisons; "
         "it is an optional extra (`pip install -e .[demo]`).\n"
         "- Tree depth, learning rate, number of estimators and split fractions are "

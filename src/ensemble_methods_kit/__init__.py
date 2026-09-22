@@ -1,9 +1,10 @@
 """ensemble-methods-kit: a from-scratch NumPy toolkit of ensemble learning methods.
 
 The package re-implements common ensemble strategies (bagging, random forest,
-extremely randomized trees, AdaBoost, gradient boosting, voting, stacking and
-blending) on top of a small CART decision tree so that the whole workflow is
-dependency-light and easy to follow.
+extremely randomized trees, AdaBoost, gradient boosting, histogram gradient
+boosting, voting, stacking and blending). Most of them sit on a small CART
+decision tree; histogram gradient boosting grows its own binned Newton trees.
+The whole workflow stays dependency-light and easy to follow.
 """
 
 from .utils import (
@@ -31,6 +32,7 @@ from .gradient_boosting import (
     GradientBoostingClassifier,
     GradientBoostingRegressor,
 )
+from .histogram_gradient_boosting import HistogramGradientBoostingClassifier
 from .voting import VotingClassifier
 from .stacking import (
     BlendingClassifier,
@@ -48,6 +50,7 @@ __all__ = [
     "ExtraTreesClassifier",
     "GradientBoostingClassifier",
     "GradientBoostingRegressor",
+    "HistogramGradientBoostingClassifier",
     "VotingClassifier",
     "StackingClassifier",
     "BlendingClassifier",

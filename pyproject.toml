@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [{name = "Muhtasim-Munif-Fahim", email = "s1911024120@ru.ac.bd"}]
-keywords = ["ensemble-learning", "machine-learning", "numpy", "bagging", "boosting", "adaboost", "stacking", "random-forest", "extra-trees"]
+keywords = ["ensemble-learning", "machine-learning", "numpy", "bagging", "boosting", "adaboost", "stacking", "random-forest", "extra-trees", "histogram-gradient-boosting"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
