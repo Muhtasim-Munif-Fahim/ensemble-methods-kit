@@ -4,9 +4,10 @@ A from-scratch NumPy toolkit of **ensemble learning methods** with a complete
 demo workflow that trains several ensembles, benchmarks them against each other
 and against scikit-learn baselines, and writes a Markdown report.
 
-The estimators are implemented on top of a small CART decision tree so the whole
-package has a single hard runtime dependency (`numpy`) and the algorithms are
-easy to read and extend.
+Most estimators are implemented on top of a small CART decision tree. Histogram
+gradient boosting is the exception: it bins each feature and grows Newton trees
+on those bins. The package has a single hard runtime dependency (`numpy`) and
+the algorithms are easy to read and extend.
 
 ## Features
 
@@ -22,7 +23,13 @@ easy to read and extend.
 - **AdaBoostClassifier** — SAMME adaptive boosting of decision-tree weak
   learners with a weighted majority vote.
 - **GradientBoostingClassifier / Regressor** — additive trees fit on the loss
-  gradient (log-loss / least-squares).
+  gradient (log-loss / least-squares), with an exact scan of each feature.
+- **HistogramGradientBoostingClassifier** — the histogram variant of gradient
+  boosting. Features are quantile-binned, then each boosting iteration grows
+  Newton trees on those bins (one tree per class when there are more than two
+  classes). Supports binary and multiclass targets, `predict_proba`, and
+  `staged_predict_proba` after every iteration. Gain-based
+  `feature_importances_` summarise which bins the trees split on.
 - **VotingClassifier** — soft and hard voting over arbitrary estimators.
 - **StackingClassifier** — out-of-fold meta-features + a logistic-regression
   meta-learner.
@@ -86,6 +93,7 @@ ensemble-methods-kit/
 │   ├── extra_trees.py
 │   ├── adaboost.py
 │   ├── gradient_boosting.py
+│   ├── histogram_gradient_boosting.py
 │   ├── voting.py
 │   ├── stacking.py
 │   └── blending.py
