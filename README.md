@@ -30,7 +30,10 @@ the algorithms are easy to read and extend.
   classes). Supports binary and multiclass targets, `predict_proba`, and
   `staged_predict_proba` after every iteration. Gain-based
   `feature_importances_` summarise which bins the trees split on.
-- **VotingClassifier** — soft and hard voting over arbitrary estimators.
+- **VotingClassifier** — hard (weighted majority) and soft (weighted
+  probability) voting. `fit` clones each base estimator. Soft votes align
+  every model's probability columns to the ensemble class order, and an
+  entry may be `"drop"` to leave that model out.
 - **StackingClassifier** — out-of-fold meta-features + a logistic-regression
   meta-learner.
 - **BlendingClassifier** — hold-out meta-learning on a validation split.
@@ -62,6 +65,30 @@ clf = RandomForestClassifier(n_estimators=25, max_depth=5, random_state=0)
 clf.fit(X_tr, y_tr)
 print("accuracy:", accuracy_score(y_te, clf.predict(X_te)))
 print("MDI importances:", clf.feature_importances_)
+```
+
+Continuing the Iris split above, combine heterogeneous classifiers with a
+hard or soft vote. The objects you pass in are cloned, so they stay unfitted
+until you fit them yourself:
+
+```python
+from ensemble_methods_kit import DecisionTree, RandomForestClassifier, VotingClassifier
+
+vote = VotingClassifier(
+    estimators=[
+        ("forest", RandomForestClassifier(n_estimators=25, max_depth=5, random_state=0)),
+        ("tree", DecisionTree(max_depth=4, random_state=0)),
+    ],
+    voting="soft",
+    weights=[2.0, 1.0],
+)
+vote.fit(X_tr, y_tr)
+print("soft vote:", accuracy_score(y_te, vote.predict(X_te)))
+print("mean class probability:", vote.predict_proba(X_te).mean(axis=0))
+
+hard = VotingClassifier(vote.estimators, voting="hard")
+hard.fit(X_tr, y_tr)
+print("hard vote:", accuracy_score(y_te, hard.predict(X_te)))
 ```
 
 `feature_importances_` is the Mean Decrease Impurity (MDI) ranking: each
