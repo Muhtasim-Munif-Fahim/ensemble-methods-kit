@@ -2,8 +2,9 @@
 
 The package re-implements common ensemble strategies (bagging, random forest,
 extremely randomized trees, AdaBoost, gradient boosting, histogram gradient
-boosting, voting, stacking and blending). Most of them sit on a small CART
-decision tree; histogram gradient boosting grows its own binned Newton trees.
+boosting, voting, stacking and blending). Bagging and random forest cover
+classification and regression. Most estimators sit on a small CART decision
+tree; histogram gradient boosting grows its own binned Newton trees.
 The whole workflow stays dependency-light and easy to follow.
 """
 
@@ -24,8 +25,8 @@ from .utils import (
     roc_auc_score,
     train_test_split,
 )
-from .bagging import BaggingClassifier
-from .random_forest import RandomForestClassifier
+from .bagging import BaggingClassifier, BaggingRegressor
+from .random_forest import RandomForestClassifier, RandomForestRegressor
 from .extra_trees import ExtraTreesClassifier
 from .adaboost import AdaBoostClassifier
 from .gradient_boosting import (
@@ -46,7 +47,9 @@ __all__ = [
     "__version__",
     "DecisionTree",
     "BaggingClassifier",
+    "BaggingRegressor",
     "RandomForestClassifier",
+    "RandomForestRegressor",
     "ExtraTreesClassifier",
     "GradientBoostingClassifier",
     "GradientBoostingRegressor",
