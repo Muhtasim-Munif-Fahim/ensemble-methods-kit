@@ -14,9 +14,14 @@ the algorithms are easy to read and extend.
 - **DecisionTree** — CART with gini / entropy splits for classification and
   variance reduction for regression, plus feature sub-sampling and Mean
   Decrease Impurity (`feature_importances_`).
-- **BaggingClassifier** — bootstrap aggregating of decision trees.
-- **RandomForestClassifier** — bagging with random feature sub-sampling.
-  Exposes impurity-based `feature_importances_` (Mean Decrease Impurity).
+- **BaggingClassifier / BaggingRegressor** — bootstrap aggregating of CART
+  decision trees. The regressor averages tree predictions. Pass
+  `oob_score=True` to record an out-of-bag R² (`oob_score_`) and the
+  left-out predictions (`oob_prediction_`).
+- **RandomForestClassifier / RandomForestRegressor** — bagging with random
+  feature sub-sampling (`max_features`: `"sqrt"`, `"log2"`, or an integer
+  count). Both expose impurity-based `feature_importances_` (Mean Decrease
+  Impurity). The regressor accepts the same optional out-of-bag score.
 - **ExtraTreesClassifier** — extremely randomized trees: random feature
   sub-sampling plus random split thresholds on the shared DecisionTree.
   Same MDI `feature_importances_` as Random Forest.
@@ -91,10 +96,31 @@ hard.fit(X_tr, y_tr)
 print("hard vote:", accuracy_score(y_te, hard.predict(X_te)))
 ```
 
+Fit a random-forest regressor on a noisy linear target. `max_features`
+controls how many columns each split may use, and `oob_score=True` asks for
+the out-of-bag R² (bootstrap must stay on):
+
+```python
+import numpy as np
+from ensemble_methods_kit import RandomForestRegressor, mean_squared_error
+
+rng = np.random.default_rng(0)
+X = rng.normal(size=(200, 4))
+y = X @ np.array([1.5, -2.0, 0.5, 0.0]) + 0.3 * rng.normal(size=200)
+
+reg = RandomForestRegressor(
+    n_estimators=40, max_depth=6, max_features="sqrt", oob_score=True, random_state=0
+)
+reg.fit(X, y)
+print("mse:", mean_squared_error(y, reg.predict(X)))
+print("oob R²:", reg.oob_score_)
+```
+
 `feature_importances_` is the Mean Decrease Impurity (MDI) ranking: each
 split contributes its weighted impurity decrease to the chosen feature.
-`RandomForestClassifier` and `ExtraTreesClassifier` average that vector
-over their trees (also available as `mean_decrease_impurity(estimators)`).
+`RandomForestClassifier`, `RandomForestRegressor`, and `ExtraTreesClassifier`
+average that vector over their trees (also available as
+`mean_decrease_impurity(estimators)`).
 AdaBoost keeps its own SAMME-weighted split-usage importances.
 
 Run the command-line demo (writes `examples/output/demo_report.md`):

@@ -2,8 +2,9 @@
 
 Running ``python -m ensemble_methods_kit`` (or the ``ensemble-methods``
 console script) trains every estimator in the kit on a classification task,
-optionally compares them to scikit-learn baselines, benchmarks the gradient
-boosting regressor on a regression task, and writes a Markdown report.
+optionally compares them to scikit-learn baselines, benchmarks the regression
+ensembles (bagging, random forest, and gradient boosting) on a regression
+task, and writes a Markdown report.
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ import numpy as np
 from . import (
     AdaBoostClassifier,
     BaggingClassifier,
+    BaggingRegressor,
     BlendingClassifier,
     DecisionTree,
     ExtraTreesClassifier,
@@ -25,6 +27,7 @@ from . import (
     GradientBoostingRegressor,
     HistogramGradientBoostingClassifier,
     RandomForestClassifier,
+    RandomForestRegressor,
     StackingClassifier,
     VotingClassifier,
     accuracy_score,
@@ -276,16 +279,39 @@ def run_demo(output_path: str = "demo_report.md", use_sklearn: bool = True) -> s
     sections.append(f"\n## 2. Regression - {reg_name}\n")
     sections.append(f"Samples: {Xr.shape[0]}  |  Features: {Xr.shape[1]}  |  "
                     f"Train: {Xr_tr.shape[0]}  |  Test: {Xr_te.shape[0]}\n")
-    gbr = GradientBoostingRegressor(
-        n_estimators=100, learning_rate=0.1, max_depth=3, random_state=_DEMO_RANDOM_STATE
-    ).fit(Xr_tr, yr_tr)
-    gbr_r2 = r2_score(yr_te, gbr.predict(Xr_te))
-    tree_r2 = r2_score(yr_te, DecisionTree(criterion="variance", max_depth=5,
-                                           random_state=_DEMO_RANDOM_STATE).fit(Xr_tr, yr_tr).predict(Xr_te))
+    regressors = [
+        (
+            "BaggingRegressor",
+            BaggingRegressor(n_estimators=25, random_state=_DEMO_RANDOM_STATE),
+        ),
+        (
+            "RandomForestRegressor",
+            RandomForestRegressor(
+                n_estimators=30, max_depth=5, random_state=_DEMO_RANDOM_STATE
+            ),
+        ),
+        (
+            "GradientBoostingRegressor",
+            GradientBoostingRegressor(
+                n_estimators=100, learning_rate=0.1, max_depth=3,
+                random_state=_DEMO_RANDOM_STATE,
+            ),
+        ),
+        (
+            "DecisionTree (depth 5)",
+            DecisionTree(
+                criterion="variance", max_depth=5, random_state=_DEMO_RANDOM_STATE
+            ),
+        ),
+    ]
+    reg_rows = []
+    for name, model in regressors:
+        model.fit(Xr_tr, yr_tr)
+        reg_rows.append((name, r2_score(yr_te, model.predict(Xr_te))))
     sections.append(
         "\n| Model | R² |\n|---|---|\n"
-        f"| GradientBoostingRegressor | {gbr_r2:.4f} |\n"
-        f"| DecisionTree (depth 5)    | {tree_r2:.4f} |\n"
+        + "\n".join(f"| {name} | {score:.4f} |" for name, score in reg_rows)
+        + "\n"
     )
 
     # ---- notes

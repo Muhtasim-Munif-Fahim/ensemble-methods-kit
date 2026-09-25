@@ -5,9 +5,9 @@ Usage (from the repository root)::
     python examples/run_demo.py
 
 This trains every estimator in the kit on the Iris dataset, compares the
-results to scikit-learn baselines when scikit-learn is installed, benchmarks a
-gradient-boosting regressor on a regression task, and writes
-``examples/output/demo_report.md``.
+results to scikit-learn baselines when scikit-learn is installed, benchmarks
+the bagging, random-forest, and gradient-boosting regressors on a regression
+task, and writes ``examples/output/demo_report.md``.
 """
 
 from __future__ import annotations
