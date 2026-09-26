@@ -1,4 +1,4 @@
-"""Voting ensembles that combine independent classifiers."""
+"""Voting ensembles that combine independent classifiers or regressors."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import numpy as np
 
 from .utils import clone_estimator
 
-__all__ = ["VotingClassifier"]
+__all__ = ["VotingClassifier", "VotingRegressor"]
 
 
 def _as_2d(X) -> np.ndarray:
@@ -322,3 +322,170 @@ class VotingClassifier:
                 for class_index in range(self.n_classes_)
             ]
         return np.asarray(names, dtype=object)
+
+
+class VotingRegressor:
+    """Combine regressors by averaging (optionally weighted) predictions.
+
+    ``fit`` clones every base estimator, so the objects passed in
+    ``estimators`` are left unfitted. Predictions are the weighted mean of
+    the base ``predict`` outputs.
+
+    Parameters
+    ----------
+    estimators :
+        Non-empty list of ``(name, estimator)`` pairs. A pair whose estimator
+        is the string ``"drop"`` is skipped. Names must be unique strings.
+        Each kept estimator must implement ``fit`` and ``predict``.
+    weights :
+        One weight per entry in ``estimators``, including dropped entries.
+        Dropped estimators do not contribute. ``None`` uses equal weights.
+    n_jobs :
+        Accepted for a scikit-learn-style signature. Fitting is serial.
+    """
+
+    def __init__(
+        self,
+        estimators: Sequence[Tuple[str, object]],
+        weights: Optional[Sequence[float]] = None,
+        n_jobs: Optional[int] = None,
+    ) -> None:
+        self.estimators = list(estimators)
+        self.weights = None if weights is None else np.asarray(weights, dtype=np.float64)
+        self.n_jobs = n_jobs
+        self.named_estimators_: dict = {}
+        self.estimators_: Optional[List] = None
+        self.n_features_in_: Optional[int] = None
+        self._validate_estimators()
+        self._weights_vec()
+
+    def _validate_estimators(self) -> List[Tuple[str, object]]:
+        if len(self.estimators) == 0 or not all(
+            isinstance(item, tuple) and len(item) == 2 and isinstance(item[0], str)
+            for item in self.estimators
+        ):
+            raise ValueError(
+                "estimators must be a non-empty list of (name, estimator) pairs"
+            )
+        names = [name for name, _ in self.estimators]
+        if len(names) != len(set(names)):
+            raise ValueError("estimator names must be unique")
+        active = [(name, est) for name, est in self.estimators if est != "drop"]
+        if not active:
+            raise ValueError("at least one estimator is required")
+        for name, est in active:
+            if not hasattr(est, "fit") or not hasattr(est, "predict"):
+                raise ValueError(
+                    f"estimator {name!r} must implement fit and predict"
+                )
+        return active
+
+    def _weights_vec(self) -> np.ndarray:
+        active_mask = [est != "drop" for _, est in self.estimators]
+        n_active = sum(active_mask)
+        if self.weights is None:
+            return np.ones(n_active, dtype=np.float64)
+        weights = np.asarray(self.weights, dtype=np.float64)
+        if weights.ndim != 1 or weights.shape[0] != len(self.estimators):
+            raise ValueError(
+                "weights must contain one finite value per estimator "
+                f"(got {weights.size}, expected {len(self.estimators)})"
+            )
+        if not np.all(np.isfinite(weights)):
+            raise ValueError("weights must be finite")
+        active = weights[np.asarray(active_mask)]
+        if np.isclose(active.sum(), 0.0):
+            raise ValueError("weights of kept estimators must not sum to zero")
+        return active
+
+    def _check_fitted(self) -> None:
+        if self.estimators_ is None:
+            raise RuntimeError("Estimator is not fitted yet")
+
+    def _validate_X(self, X) -> np.ndarray:
+        X = _as_2d(X)
+        if X.shape[1] != self.n_features_in_:
+            raise ValueError(
+                f"X has {X.shape[1]} features, but VotingRegressor is expecting "
+                f"{self.n_features_in_} features as input"
+            )
+        return X
+
+    def fit(self, X, y, sample_weight=None) -> "VotingRegressor":
+        """Fit a clone of each kept base estimator.
+
+        Parameters
+        ----------
+        X, y :
+            Training features and continuous targets.
+        sample_weight :
+            Per-sample weights forwarded to each base ``fit``. Estimators that
+            do not accept ``sample_weight`` raise ``TypeError``.
+        """
+        active = self._validate_estimators()
+        X = np.asarray(X, dtype=np.float64)
+        if X.ndim == 1:
+            X = X.reshape(-1, 1)
+        if X.ndim != 2:
+            raise ValueError("X must be a 2D array of shape (n_samples, n_features)")
+        y = np.asarray(y, dtype=np.float64)
+        if y.ndim == 2 and y.shape[1] == 1:
+            y = y.ravel()
+        if y.ndim != 1:
+            raise ValueError("y must be a 1D array of targets")
+        if X.shape[0] != y.shape[0]:
+            raise ValueError("X and y must have the same number of samples")
+        if X.shape[0] == 0:
+            raise ValueError("X must contain at least one sample")
+        if not np.all(np.isfinite(y)):
+            raise ValueError("y must contain only finite values")
+        if sample_weight is not None:
+            sample_weight = np.asarray(sample_weight, dtype=np.float64)
+            if sample_weight.shape != (X.shape[0],):
+                raise ValueError("sample_weight must have one value per sample")
+
+        self._weights_vec()
+
+        fitted: List = []
+        named: dict = {}
+        for name, est in self.estimators:
+            if est == "drop":
+                named[name] = "drop"
+                continue
+            cloned = clone_estimator(est)
+            _fit_estimator(cloned, X, y, sample_weight)
+            fitted.append(cloned)
+            named[name] = cloned
+        if len(fitted) != len(active):
+            raise RuntimeError("failed to fit every kept estimator")
+        self.n_features_in_ = int(X.shape[1])
+        self.estimators_ = fitted
+        self.named_estimators_ = named
+        return self
+
+    def predict(self, X) -> np.ndarray:
+        """Average base regressor predictions for ``X``."""
+        self._check_fitted()
+        X = self._validate_X(X)
+        preds = np.column_stack(
+            [np.asarray(est.predict(X), dtype=np.float64).reshape(-1) for est in self.estimators_]
+        )
+        if preds.shape[0] != X.shape[0]:
+            raise ValueError("base estimator predict returned the wrong number of rows")
+        return np.average(preds, axis=1, weights=self._weights_vec())
+
+    def transform(self, X) -> np.ndarray:
+        """Return each base estimator's predictions of shape ``(n_samples, n_estimators)``."""
+        self._check_fitted()
+        X = self._validate_X(X)
+        return np.column_stack(
+            [np.asarray(est.predict(X), dtype=np.float64).reshape(-1) for est in self.estimators_]
+        )
+
+    def get_feature_names_out(self, input_features=None) -> np.ndarray:
+        """Names of the columns produced by :meth:`transform`."""
+        del input_features
+        self._check_fitted()
+        prefix = type(self).__name__.lower()
+        active_names = [name for name, est in self.estimators if est != "drop"]
+        return np.asarray([f"{prefix}_{name}" for name in active_names], dtype=object)
