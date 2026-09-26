@@ -22,9 +22,10 @@ the algorithms are easy to read and extend.
   feature sub-sampling (`max_features`: `"sqrt"`, `"log2"`, or an integer
   count). Both expose impurity-based `feature_importances_` (Mean Decrease
   Impurity). The regressor accepts the same optional out-of-bag score.
-- **ExtraTreesClassifier** — extremely randomized trees: random feature
-  sub-sampling plus random split thresholds on the shared DecisionTree.
-  Same MDI `feature_importances_` as Random Forest.
+- **ExtraTreesClassifier / ExtraTreesRegressor** — extremely randomized trees: random feature
+  sub-sampling plus random split thresholds on the shared DecisionTree
+  (`splitter="random"`, `bootstrap=False` by default). The regressor uses
+  variance-reducing CART trees. Same MDI `feature_importances_` as Random Forest.
 - **AdaBoostClassifier** — SAMME adaptive boosting of decision-tree weak
   learners with a weighted majority vote.
 - **GradientBoostingClassifier / Regressor** — additive trees fit on the loss
