@@ -34,7 +34,7 @@ from .gradient_boosting import (
     GradientBoostingRegressor,
 )
 from .histogram_gradient_boosting import HistogramGradientBoostingClassifier
-from .voting import VotingClassifier
+from .voting import VotingClassifier, VotingRegressor
 from .stacking import (
     BlendingClassifier,
     LogisticRegression,
@@ -55,6 +55,7 @@ __all__ = [
     "GradientBoostingRegressor",
     "HistogramGradientBoostingClassifier",
     "VotingClassifier",
+    "VotingRegressor",
     "StackingClassifier",
     "BlendingClassifier",
     "LogisticRegression",

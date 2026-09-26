@@ -30,6 +30,7 @@ from . import (
     RandomForestRegressor,
     StackingClassifier,
     VotingClassifier,
+    VotingRegressor,
     accuracy_score,
     log_loss,
     r2_score,
@@ -295,6 +296,18 @@ def run_demo(output_path: str = "demo_report.md", use_sklearn: bool = True) -> s
             GradientBoostingRegressor(
                 n_estimators=100, learning_rate=0.1, max_depth=3,
                 random_state=_DEMO_RANDOM_STATE,
+            ),
+        ),
+        (
+            "VotingRegressor",
+            VotingRegressor(
+                estimators=[
+                    ("rf", RandomForestRegressor(n_estimators=20, max_depth=5, random_state=1)),
+                    ("gbr", GradientBoostingRegressor(
+                        n_estimators=40, learning_rate=0.1, max_depth=2, random_state=1
+                    )),
+                    ("dt", DecisionTree(criterion="variance", max_depth=5, random_state=1)),
+                ],
             ),
         ),
         (

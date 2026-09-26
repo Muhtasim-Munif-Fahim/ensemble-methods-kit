@@ -39,6 +39,8 @@ the algorithms are easy to read and extend.
   probability) voting. `fit` clones each base estimator. Soft votes align
   every model's probability columns to the ensemble class order, and an
   entry may be `"drop"` to leave that model out.
+- **VotingRegressor** — weighted average of independent regressors. Same
+  clone / `"drop"` / `weights` conventions as the classifier.
 - **StackingClassifier** — out-of-fold meta-features + a logistic-regression
   meta-learner.
 - **BlendingClassifier** — hold-out meta-learning on a validation split.
@@ -95,6 +97,29 @@ hard = VotingClassifier(vote.estimators, voting="hard")
 hard.fit(X_tr, y_tr)
 print("hard vote:", accuracy_score(y_te, hard.predict(X_te)))
 ```
+
+Average heterogeneous regressors the same way:
+
+```python
+from ensemble_methods_kit import (
+    DecisionTree,
+    GradientBoostingRegressor,
+    RandomForestRegressor,
+    VotingRegressor,
+)
+
+vote = VotingRegressor(
+    estimators=[
+        ("rf", RandomForestRegressor(n_estimators=20, max_depth=5, random_state=1)),
+        ("gbr", GradientBoostingRegressor(n_estimators=40, learning_rate=0.1, max_depth=2, random_state=1)),
+        ("dt", DecisionTree(criterion="variance", max_depth=5, random_state=1)),
+    ],
+    weights=[2.0, 1.0, 1.0],
+)
+vote.fit(X_tr, y_tr)  # continuous targets
+print(vote.predict(X_te[:3]))
+```
+
 
 Fit a random-forest regressor on a noisy linear target. `max_features`
 controls how many columns each split may use, and `oob_score=True` asks for
