@@ -3,7 +3,7 @@
 Running ``python -m ensemble_methods_kit`` (or the ``ensemble-methods``
 console script) trains every estimator in the kit on a classification task,
 optionally compares them to scikit-learn baselines, benchmarks the regression
-ensembles (bagging, random forest, and gradient boosting) on a regression
+ensembles (bagging, random forest, extra trees, and gradient boosting) on a regression
 task, and writes a Markdown report.
 """
 
@@ -23,6 +23,7 @@ from . import (
     BlendingClassifier,
     DecisionTree,
     ExtraTreesClassifier,
+    ExtraTreesRegressor,
     GradientBoostingClassifier,
     GradientBoostingRegressor,
     HistogramGradientBoostingClassifier,
@@ -288,6 +289,12 @@ def run_demo(output_path: str = "demo_report.md", use_sklearn: bool = True) -> s
         (
             "RandomForestRegressor",
             RandomForestRegressor(
+                n_estimators=30, max_depth=5, random_state=_DEMO_RANDOM_STATE
+            ),
+        ),
+        (
+            "ExtraTreesRegressor",
+            ExtraTreesRegressor(
                 n_estimators=30, max_depth=5, random_state=_DEMO_RANDOM_STATE
             ),
         ),
