@@ -1,4 +1,4 @@
-"""Stacking and blending meta-ensembles plus a logistic-regression oracle."""
+"""Stacking and blending meta-ensembles plus logistic / ridge oracles."""
 
 from __future__ import annotations
 
@@ -8,7 +8,13 @@ import numpy as np
 
 from .utils import clone_estimator
 
-__all__ = ["LogisticRegression", "StackingClassifier", "BlendingClassifier"]
+__all__ = [
+    "LogisticRegression",
+    "RidgeRegression",
+    "StackingClassifier",
+    "StackingRegressor",
+    "BlendingClassifier",
+]
 
 
 def _softmax_matrix(scores: np.ndarray) -> np.ndarray:
@@ -277,3 +283,145 @@ class BlendingClassifier:
 
     def predict(self, X) -> np.ndarray:
         return self.classes_[self.meta_.predict(self._meta_features(X))]
+
+
+class RidgeRegression:
+    """Closed-form ridge regressor used as the default stacking meta-learner.
+
+    Features are standardised internally. The solution is
+    ``w = (X'X + alpha I)^{-1} X'y`` with an intercept fit on the centred
+    target. ``alpha`` is the L2 penalty strength (``0`` recovers OLS).
+
+    Parameters
+    ----------
+    alpha :
+        L2 regularisation strength. Must be non-negative.
+    fit_intercept :
+        Whether to fit an intercept term.
+    """
+
+    def __init__(self, alpha: float = 1.0, fit_intercept: bool = True) -> None:
+        self.alpha = float(alpha)
+        self.fit_intercept = fit_intercept
+        self.coef_: Optional[np.ndarray] = None
+        self.intercept_: float = 0.0
+
+    def fit(self, X, y) -> "RidgeRegression":
+        X = np.asarray(X, dtype=np.float64)
+        if X.ndim == 1:
+            X = X.reshape(-1, 1)
+        y = np.asarray(y, dtype=np.float64).ravel()
+        self._mu = X.mean(axis=0)
+        self._sigma = X.std(axis=0) + 1e-8
+        Xs = (X - self._mu) / self._sigma
+        if self.fit_intercept:
+            self._y_mean = float(y.mean())
+            yc = y - self._y_mean
+        else:
+            self._y_mean = 0.0
+            yc = y
+        n_features = Xs.shape[1]
+        xtx = Xs.T @ Xs
+        xty = Xs.T @ yc
+        reg = self.alpha * np.eye(n_features)
+        try:
+            self.coef_ = np.linalg.solve(xtx + reg, xty)
+        except np.linalg.LinAlgError:
+            self.coef_ = np.linalg.pinv(xtx + reg) @ xty
+        self.intercept_ = self._y_mean
+        return self
+
+    def predict(self, X) -> np.ndarray:
+        X = np.asarray(X, dtype=np.float64)
+        if X.ndim == 1:
+            X = X.reshape(1, -1)
+        Xs = (X - self._mu) / self._sigma
+        return Xs @ self.coef_ + self.intercept_
+
+
+class StackingRegressor:
+    """Stack ensemble that learns a meta-regressor over base predictions.
+
+    Base learners are evaluated by cross-validation so the meta-features
+    feeding the meta-learner are out-of-sample. Each base learner's
+    ``predict`` output becomes one meta-feature column. The base learners
+    are then re-fit on the full data for final prediction. The default
+    meta-learner is :class:`RidgeRegression`.
+
+    Parameters
+    ----------
+    estimators :
+        List of ``(name, estimator)`` pairs. Each estimator must expose
+        ``fit`` and ``predict``.
+    meta_estimator :
+        Learner trained on the stacked predictions. Defaults to
+        :class:`RidgeRegression`.
+    cv :
+        Number of cross-validation folds used to build meta-features.
+    passthrough :
+        If True, the original features are appended to the meta-features.
+    n_jobs :
+        Placeholder kept for sklearn-style API compatibility (serial only).
+    random_state :
+        Seed for the fold splits.
+    """
+
+    def __init__(
+        self,
+        estimators: Sequence[Tuple[str, object]],
+        meta_estimator: Optional[object] = None,
+        cv: int = 5,
+        passthrough: bool = False,
+        n_jobs: Optional[int] = None,
+        random_state: Optional[int] = None,
+    ) -> None:
+        self.estimators = list(estimators)
+        self.meta_estimator = meta_estimator
+        self.cv = cv
+        self.passthrough = passthrough
+        self.n_jobs = n_jobs
+        self.random_state = random_state
+        self.meta_ = None
+        self.base_full_: List = []
+
+    def _default_meta(self):
+        return RidgeRegression(alpha=1.0, fit_intercept=True)
+
+    def fit(self, X, y) -> "StackingRegressor":
+        X = np.asarray(X, dtype=np.float64)
+        if X.ndim == 1:
+            X = X.reshape(-1, 1)
+        y = np.asarray(y, dtype=np.float64).ravel()
+        n_est = len(self.estimators)
+        n = X.shape[0]
+        rng = np.random.default_rng(self.random_state)
+        meta = np.zeros((n, n_est))
+        for ei, (_, est) in enumerate(self.estimators):
+            for tr, va in _kfold_indices(n, min(self.cv, n), rng):
+                fold_est = clone_estimator(est)
+                fold_est.fit(X[tr], y[tr])
+                meta[va, ei] = np.asarray(fold_est.predict(X[va]), dtype=np.float64).ravel()
+        meta_X = meta
+        if self.passthrough:
+            meta_X = np.hstack([meta, X])
+        self.meta_ = self._default_meta() if self.meta_estimator is None else clone_estimator(self.meta_estimator)
+        self.meta_.fit(meta_X, y)
+        self.base_full_ = []
+        for _, est in self.estimators:
+            est_full = clone_estimator(est)
+            est_full.fit(X, y)
+            self.base_full_.append(est_full)
+        return self
+
+    def _meta_features(self, X) -> np.ndarray:
+        X = np.asarray(X, dtype=np.float64)
+        if X.ndim == 1:
+            X = X.reshape(1, -1)
+        parts = [np.asarray(est.predict(X), dtype=np.float64).ravel() for est in self.base_full_]
+        meta = np.column_stack(parts)
+        if self.passthrough:
+            meta = np.hstack([meta, X])
+        return meta
+
+    def predict(self, X) -> np.ndarray:
+        return np.asarray(self.meta_.predict(self._meta_features(X)), dtype=np.float64).ravel()

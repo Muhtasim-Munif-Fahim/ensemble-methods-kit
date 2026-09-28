@@ -44,6 +44,8 @@ the algorithms are easy to read and extend.
   clone / `"drop"` / `weights` conventions as the classifier.
 - **StackingClassifier** — out-of-fold meta-features + a logistic-regression
   meta-learner.
+- **StackingRegressor** — out-of-fold base predictions + a ridge / linear
+  meta-learner (parallel to `StackingClassifier`).
 - **BlendingClassifier** — hold-out meta-learning on a validation split.
 
 ## Installation
