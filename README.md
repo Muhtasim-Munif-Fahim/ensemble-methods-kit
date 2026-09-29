@@ -36,6 +36,10 @@ the algorithms are easy to read and extend.
   classes). Supports binary and multiclass targets, `predict_proba`, and
   `staged_predict_proba` after every iteration. Gain-based
   `feature_importances_` summarise which bins the trees split on.
+- **HistogramGradientBoostingRegressor** — the least-squares counterpart.
+  Same quantile binning and Newton histogram trees, but each stage fits the
+  residual `y - F` (unit Hessian). Exposes `predict`, `staged_predict`, and
+  gain-based `feature_importances_`.
 - **VotingClassifier** — hard (weighted majority) and soft (weighted
   probability) voting. `fit` clones each base estimator. Soft votes align
   every model's probability columns to the ensemble class order, and an

@@ -2,7 +2,7 @@
 
 The package re-implements common ensemble strategies (bagging, random forest,
 extremely randomized trees (classifier and regressor), AdaBoost, gradient boosting, histogram gradient
-boosting, voting, stacking (classifier and regressor) and blending). Bagging and random forest cover
+boosting (classifier and regressor), voting, stacking (classifier and regressor) and blending). Bagging and random forest cover
 classification and regression. Most estimators sit on a small CART decision
 tree; histogram gradient boosting grows its own binned Newton trees.
 The whole workflow stays dependency-light and easy to follow.
@@ -33,7 +33,10 @@ from .gradient_boosting import (
     GradientBoostingClassifier,
     GradientBoostingRegressor,
 )
-from .histogram_gradient_boosting import HistogramGradientBoostingClassifier
+from .histogram_gradient_boosting import (
+    HistogramGradientBoostingClassifier,
+    HistogramGradientBoostingRegressor,
+)
 from .voting import VotingClassifier, VotingRegressor
 from .stacking import (
     BlendingClassifier,
@@ -57,6 +60,7 @@ __all__ = [
     "GradientBoostingClassifier",
     "GradientBoostingRegressor",
     "HistogramGradientBoostingClassifier",
+    "HistogramGradientBoostingRegressor",
     "VotingClassifier",
     "VotingRegressor",
     "StackingClassifier",
