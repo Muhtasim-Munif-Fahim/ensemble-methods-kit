@@ -1,4 +1,4 @@
-"""Histogram-based gradient boosting classifier.
+"""Histogram-based gradient boosting classifier and regressor.
 
 ``GradientBoostingClassifier`` grows exact CART trees on the raw features.
 This estimator first maps every feature onto ordered bins (quantile edges,
@@ -11,6 +11,12 @@ Binary problems use one tree per iteration and a log-loss / sigmoid link.
 Multiclass problems use one tree per class per iteration and a diagonal
 Newton step on the softmax cross-entropy.  ``staged_predict_proba`` yields
 the class probabilities after every boosting iteration.
+
+``HistogramGradientBoostingRegressor`` is the least-squares counterpart:
+it grows the same binned Newton trees on quantile bins, but each stage
+fits the residual ``y - F`` (Hessian = 1) rather than a classification
+gradient.  ``staged_predict`` yields the additive prediction after every
+boosting iteration.
 """
 
 from __future__ import annotations
@@ -19,7 +25,7 @@ from typing import Iterator, List, Optional
 
 import numpy as np
 
-__all__ = ["HistogramGradientBoostingClassifier"]
+__all__ = ["HistogramGradientBoostingClassifier", "HistogramGradientBoostingRegressor"]
 
 
 def _sigmoid(z: np.ndarray) -> np.ndarray:
@@ -438,6 +444,284 @@ class HistogramGradientBoostingClassifier:
     def predict(self, X) -> np.ndarray:
         proba = self.predict_proba(X)
         return self.classes_[np.argmax(proba, axis=1)]
+
+    @property
+    def feature_importances_(self) -> np.ndarray:
+        """Normalised sum of histogram-split gains for each input feature."""
+        self._check_fitted()
+        if self._gain_sum is None:
+            raise RuntimeError("Estimator is not fitted yet")
+        importances = np.array(self._gain_sum, dtype=np.float64, copy=True)
+        total = float(importances.sum())
+        if total > 0.0:
+            importances /= total
+        return importances
+
+
+
+class HistogramGradientBoostingRegressor:
+    """Histogram gradient boosting for least-squares regression.
+
+    Each boosting iteration fits one Newton regression tree on the residual
+    ``y - F`` using quantile (or distinct-value) feature bins — the same
+    histogram machinery as :class:`HistogramGradientBoostingClassifier`, but
+    with squared-error gradients (``F - y``) and unit Hessians.  Leaf values
+    are therefore the mean residual in the leaf (with optional L2
+    regularisation).
+
+    After :meth:`fit`, :attr:`feature_importances_` is the total split gain of
+    each feature, normalised to sum to 1.
+
+    Parameters
+    ----------
+    n_estimators :
+        Number of boosting iterations (= number of trees).
+    learning_rate :
+        Shrinkage applied to each tree's Newton step.
+    max_depth :
+        Maximum depth of each tree.  ``1`` yields a single split.
+    max_bins :
+        Maximum number of bins per feature.  Columns with fewer distinct
+        values use one bin per value.
+    min_samples_leaf :
+        Minimum number of samples required in each child to accept a split.
+    l2_regularization :
+        L2 penalty added to the summed Hessian in the leaf value and the
+        split gain.  ``0`` recovers an unpenalised Newton step.
+    subsample :
+        Fraction of training rows used to grow each tree.  ``1.0`` uses
+        every row.  Scores are still updated on the full training set.
+    random_state :
+        Seed for row sub-sampling when ``subsample < 1``.
+    """
+
+    def __init__(
+        self,
+        n_estimators: int = 100,
+        learning_rate: float = 0.1,
+        max_depth: int = 3,
+        max_bins: int = 255,
+        min_samples_leaf: int = 2,
+        l2_regularization: float = 0.0,
+        subsample: float = 1.0,
+        random_state: Optional[int] = None,
+    ) -> None:
+        if n_estimators < 1:
+            raise ValueError("n_estimators must be at least 1")
+        if learning_rate <= 0:
+            raise ValueError("learning_rate must be positive")
+        if max_depth < 1:
+            raise ValueError("max_depth must be at least 1")
+        if max_bins < 2:
+            raise ValueError("max_bins must be at least 2")
+        if min_samples_leaf < 1:
+            raise ValueError("min_samples_leaf must be at least 1")
+        if l2_regularization < 0:
+            raise ValueError("l2_regularization must be non-negative")
+        if not 0.0 < subsample <= 1.0:
+            raise ValueError("subsample must be in (0, 1]")
+        self.n_estimators = n_estimators
+        self.learning_rate = learning_rate
+        self.max_depth = max_depth
+        self.max_bins = max_bins
+        self.min_samples_leaf = min_samples_leaf
+        self.l2_regularization = l2_regularization
+        self.subsample = subsample
+        self.random_state = random_state
+        self.estimators_: List[_HistNode] = []
+        self.bin_thresholds_: List[np.ndarray] = []
+        self.train_score_: List[float] = []
+        self.n_iter_: int = 0
+        self._baseline: Optional[float] = None
+        self._n_features: Optional[int] = None
+        self._gain_sum: Optional[np.ndarray] = None
+
+    def fit(self, X, y) -> "HistogramGradientBoostingRegressor":
+        X = np.asarray(X, dtype=np.float64)
+        if X.ndim == 1:
+            X = X.reshape(-1, 1)
+        if X.ndim != 2:
+            raise ValueError("X must be 2-dimensional")
+        if X.shape[0] == 0 or X.shape[1] == 0:
+            raise ValueError("X must contain at least one sample and one feature")
+        if not np.isfinite(X).all():
+            raise ValueError("X must contain only finite values")
+        y = np.asarray(y, dtype=np.float64)
+        if y.ndim == 2 and y.shape[1] == 1:
+            y = y.ravel()
+        if y.ndim != 1:
+            raise ValueError("y must be a 1-d array of targets")
+        if y.shape[0] != X.shape[0]:
+            raise ValueError("X and y must have the same number of samples")
+        if not np.isfinite(y).all():
+            raise ValueError("y must contain only finite values")
+
+        n_samples, n_features = X.shape
+        self._n_features = n_features
+        self.bin_thresholds_ = [
+            _bin_thresholds(X[:, j], self.max_bins) for j in range(n_features)
+        ]
+        binned = _bin_matrix(X, self.bin_thresholds_)
+        rng = np.random.default_rng(self.random_state)
+        self._gain_sum = np.zeros(n_features, dtype=np.float64)
+        self.estimators_ = []
+        self.train_score_ = []
+
+        baseline = float(np.mean(y))
+        self._baseline = baseline
+        scores = np.full(n_samples, baseline, dtype=np.float64)
+        hessian = np.ones(n_samples, dtype=np.float64)
+
+        for _ in range(self.n_estimators):
+            # Squared-error Newton: gradient = F - y, hessian = 1.
+            gradient = scores - y
+            tree = self._grow(
+                binned, gradient, hessian, self._row_subset(n_samples, rng), depth=0
+            )
+            scores = scores + self.learning_rate * _apply_tree(tree, binned)
+            self.estimators_.append(tree)
+            self.train_score_.append(float(np.mean((y - scores) ** 2)))
+
+        self.n_iter_ = len(self.estimators_)
+        return self
+
+    def _row_subset(self, n_samples: int, rng: np.random.Generator) -> np.ndarray:
+        if self.subsample >= 1.0:
+            return np.arange(n_samples, dtype=np.intp)
+        n_sub = max(1, int(round(self.subsample * n_samples)))
+        n_sub = min(n_samples, n_sub)
+        return rng.choice(n_samples, size=n_sub, replace=False)
+
+    def _leaf_value(self, grad: np.ndarray, hess: np.ndarray, indices: np.ndarray) -> float:
+        summed_grad = float(grad[indices].sum())
+        summed_hess = float(hess[indices].sum())
+        denom = summed_hess + self.l2_regularization
+        if denom <= 1e-12:
+            return 0.0
+        return float(-summed_grad / denom)
+
+    def _best_split(self, binned, grad, hess, indices):
+        n_node = int(indices.shape[0])
+        if n_node < 2 * self.min_samples_leaf:
+            return None
+        summed_grad = float(grad[indices].sum())
+        summed_hess = float(hess[indices].sum())
+        denom_parent = summed_hess + self.l2_regularization
+        if denom_parent <= 1e-12:
+            return None
+        parent = (summed_grad * summed_grad) / denom_parent
+        best_gain = 0.0
+        best = None
+        min_leaf = self.min_samples_leaf
+        l2 = self.l2_regularization
+
+        for feature in range(binned.shape[1]):
+            bins_f = binned[indices, feature]
+            if int(bins_f.min()) == int(bins_f.max()):
+                continue
+            order = np.argsort(bins_f, kind="mergesort")
+            sorted_bins = bins_f[order]
+            sorted_idx = indices[order]
+            grad_cum = np.cumsum(grad[sorted_idx])
+            hess_cum = np.cumsum(hess[sorted_idx])
+            boundaries = np.flatnonzero(sorted_bins[:-1] != sorted_bins[1:])
+            if boundaries.size == 0:
+                continue
+            n_left = boundaries + 1
+            n_right = n_node - n_left
+            eligible = (n_left >= min_leaf) & (n_right >= min_leaf)
+            if not np.any(eligible):
+                continue
+            boundaries = boundaries[eligible]
+            grad_left = grad_cum[boundaries]
+            hess_left = hess_cum[boundaries]
+            grad_right = summed_grad - grad_left
+            hess_right = summed_hess - hess_left
+            denom_left = hess_left + l2
+            denom_right = hess_right + l2
+            stable = (denom_left > 1e-12) & (denom_right > 1e-12)
+            if not np.any(stable):
+                continue
+            boundaries = boundaries[stable]
+            grad_left = grad_left[stable]
+            grad_right = grad_right[stable]
+            denom_left = denom_left[stable]
+            denom_right = denom_right[stable]
+            gains = 0.5 * (
+                (grad_left * grad_left) / denom_left
+                + (grad_right * grad_right) / denom_right
+                - parent
+            )
+            local = int(np.argmax(gains))
+            gain = float(gains[local])
+            if gain > best_gain:
+                best_gain = gain
+                pos = int(boundaries[local])
+                best = (
+                    feature,
+                    int(sorted_bins[pos]),
+                    sorted_idx[: pos + 1].copy(),
+                    sorted_idx[pos + 1 :].copy(),
+                    gain,
+                )
+        return best
+
+    def _grow(self, binned, grad, hess, indices, depth: int) -> _HistNode:
+        node = _HistNode(self._leaf_value(grad, hess, indices))
+        if depth >= self.max_depth:
+            return node
+        split = self._best_split(binned, grad, hess, indices)
+        if split is None:
+            return node
+        feature, threshold, left_idx, right_idx, gain = split
+        node.feature = int(feature)
+        node.threshold = int(threshold)
+        self._gain_sum[feature] += gain
+        node.left = self._grow(binned, grad, hess, left_idx, depth + 1)
+        node.right = self._grow(binned, grad, hess, right_idx, depth + 1)
+        return node
+
+    def _check_fitted(self) -> None:
+        if not self.estimators_ or self._baseline is None:
+            raise RuntimeError("Estimator is not fitted yet")
+
+    def _validate_X(self, X) -> np.ndarray:
+        X = np.asarray(X, dtype=np.float64)
+        if X.ndim == 1:
+            X = X.reshape(1, -1)
+        if X.ndim != 2:
+            raise ValueError("X must be 2-dimensional")
+        if not np.isfinite(X).all():
+            raise ValueError("X must contain only finite values")
+        if self._n_features is not None and X.shape[1] != self._n_features:
+            raise ValueError(
+                f"X has {X.shape[1]} features, but HistogramGradientBoostingRegressor "
+                f"is expecting {self._n_features} features"
+            )
+        return X
+
+    def staged_predict(self, X) -> Iterator[np.ndarray]:
+        """Yield predictions after each boosting iteration.
+
+        The generator validates that the estimator is fitted before the first
+        prediction vector is produced.  The last vector is identical to
+        :meth:`predict`.
+        """
+        self._check_fitted()
+        X = self._validate_X(X)
+        binned = _bin_matrix(X, self.bin_thresholds_)
+        scores = np.full(binned.shape[0], float(self._baseline), dtype=np.float64)
+        for tree in self.estimators_:
+            scores = scores + self.learning_rate * _apply_tree(tree, binned)
+            yield scores.copy()
+
+    def predict(self, X) -> np.ndarray:
+        if not self.estimators_:
+            raise RuntimeError("Estimator is not fitted yet")
+        pred = None
+        for pred in self.staged_predict(X):
+            pass
+        return pred
 
     @property
     def feature_importances_(self) -> np.ndarray:
