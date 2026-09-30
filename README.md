@@ -28,6 +28,8 @@ the algorithms are easy to read and extend.
   variance-reducing CART trees. Same MDI `feature_importances_` as Random Forest.
 - **AdaBoostClassifier** — SAMME adaptive boosting of decision-tree weak
   learners with a weighted majority vote.
+- **AdaBoostRegressor** — AdaBoost.R2 adaptive boosting of variance-reducing
+  decision-tree weak learners with a weighted-median prediction.
 - **GradientBoostingClassifier / Regressor** — additive trees fit on the loss
   gradient (log-loss / least-squares), with an exact scan of each feature.
 - **HistogramGradientBoostingClassifier** — the histogram variant of gradient
