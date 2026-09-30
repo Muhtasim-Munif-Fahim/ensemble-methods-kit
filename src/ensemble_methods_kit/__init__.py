@@ -1,7 +1,7 @@
 """ensemble-methods-kit: a from-scratch NumPy toolkit of ensemble learning methods.
 
 The package re-implements common ensemble strategies (bagging, random forest,
-extremely randomized trees (classifier and regressor), AdaBoost, gradient boosting, histogram gradient
+extremely randomized trees (classifier and regressor), AdaBoost (classifier and regressor), gradient boosting, histogram gradient
 boosting (classifier and regressor), voting, stacking (classifier and regressor) and blending). Bagging and random forest cover
 classification and regression. Most estimators sit on a small CART decision
 tree; histogram gradient boosting grows its own binned Newton trees.
@@ -28,7 +28,7 @@ from .utils import (
 from .bagging import BaggingClassifier, BaggingRegressor
 from .random_forest import RandomForestClassifier, RandomForestRegressor
 from .extra_trees import ExtraTreesClassifier, ExtraTreesRegressor
-from .adaboost import AdaBoostClassifier
+from .adaboost import AdaBoostClassifier, AdaBoostRegressor
 from .gradient_boosting import (
     GradientBoostingClassifier,
     GradientBoostingRegressor,
@@ -69,6 +69,7 @@ __all__ = [
     "LogisticRegression",
     "RidgeRegression",
     "AdaBoostClassifier",
+    "AdaBoostRegressor",
     "accuracy_score",
     "balanced_sample_weights",
     "bootstrap_sample",

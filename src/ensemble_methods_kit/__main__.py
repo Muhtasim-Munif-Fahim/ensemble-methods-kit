@@ -18,6 +18,7 @@ import numpy as np
 
 from . import (
     AdaBoostClassifier,
+    AdaBoostRegressor,
     BaggingClassifier,
     BaggingRegressor,
     BlendingClassifier,
@@ -311,6 +312,13 @@ def run_demo(output_path: str = "demo_report.md", use_sklearn: bool = True) -> s
             "HistGradientBoostingRegressor",
             HistogramGradientBoostingRegressor(
                 n_estimators=40, learning_rate=0.1, max_depth=3, max_bins=64,
+                random_state=_DEMO_RANDOM_STATE,
+            ),
+        ),
+        (
+            "AdaBoostRegressor",
+            AdaBoostRegressor(
+                n_estimators=40, learning_rate=0.5, max_depth=3,
                 random_state=_DEMO_RANDOM_STATE,
             ),
         ),
