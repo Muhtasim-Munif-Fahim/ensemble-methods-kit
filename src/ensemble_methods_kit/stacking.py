@@ -14,6 +14,7 @@ __all__ = [
     "StackingClassifier",
     "StackingRegressor",
     "BlendingClassifier",
+    "BlendingRegressor",
 ]
 
 
@@ -406,6 +407,94 @@ class StackingRegressor:
             meta_X = np.hstack([meta, X])
         self.meta_ = self._default_meta() if self.meta_estimator is None else clone_estimator(self.meta_estimator)
         self.meta_.fit(meta_X, y)
+        self.base_full_ = []
+        for _, est in self.estimators:
+            est_full = clone_estimator(est)
+            est_full.fit(X, y)
+            self.base_full_.append(est_full)
+        return self
+
+    def _meta_features(self, X) -> np.ndarray:
+        X = np.asarray(X, dtype=np.float64)
+        if X.ndim == 1:
+            X = X.reshape(1, -1)
+        parts = [np.asarray(est.predict(X), dtype=np.float64).ravel() for est in self.base_full_]
+        meta = np.column_stack(parts)
+        if self.passthrough:
+            meta = np.hstack([meta, X])
+        return meta
+
+    def predict(self, X) -> np.ndarray:
+        return np.asarray(self.meta_.predict(self._meta_features(X)), dtype=np.float64).ravel()
+
+
+class BlendingRegressor:
+    """Hold-out ensemble: meta-features come from a single validation split.
+
+    Regression counterpart of :class:`BlendingClassifier`. Base learners are
+    fit on the training partition; their validation ``predict`` outputs train
+    the meta-learner (default :class:`RidgeRegression`). Base learners are
+    then re-fit on the full data for final prediction.
+
+    Parameters
+    ----------
+    estimators :
+        List of ``(name, estimator)`` pairs. Each estimator must expose
+        ``fit`` and ``predict``.
+    meta_estimator :
+        Learner fit on the held-out predictions. Defaults to
+        :class:`RidgeRegression`.
+    validation_fraction :
+        Fraction of the training data reserved for building meta-features.
+    passthrough :
+        If True, append the raw features to the meta-features.
+    random_state :
+        Seed for the train/validation split.
+    """
+
+    def __init__(
+        self,
+        estimators: Sequence[Tuple[str, object]],
+        meta_estimator: Optional[object] = None,
+        validation_fraction: float = 0.3,
+        passthrough: bool = False,
+        random_state: Optional[int] = None,
+    ) -> None:
+        self.estimators = list(estimators)
+        self.meta_estimator = meta_estimator
+        self.validation_fraction = validation_fraction
+        self.passthrough = passthrough
+        self.random_state = random_state
+        self.meta_ = None
+        self.base_full_: List = []
+
+    def _default_meta(self):
+        return RidgeRegression(alpha=1.0, fit_intercept=True)
+
+    def fit(self, X, y) -> "BlendingRegressor":
+        from .utils import train_test_split as _tts
+
+        X = np.asarray(X, dtype=np.float64)
+        if X.ndim == 1:
+            X = X.reshape(-1, 1)
+        y = np.asarray(y, dtype=np.float64).ravel()
+        X_tr, X_va, y_tr, y_va = _tts(
+            X, y, test_size=self.validation_fraction,
+            random_state=self.random_state, stratify=None,
+        )
+        self.base_full_ = []
+        meta_parts: List[np.ndarray] = []
+        for _, est in self.estimators:
+            est_full = clone_estimator(est)
+            est_full.fit(X_tr, y_tr)
+            meta_parts.append(np.asarray(est_full.predict(X_va), dtype=np.float64).ravel())
+            self.base_full_.append(est_full)
+        meta = np.column_stack(meta_parts)
+        if self.passthrough:
+            meta = np.hstack([meta, X_va])
+        self.meta_ = self._default_meta() if self.meta_estimator is None else clone_estimator(self.meta_estimator)
+        self.meta_.fit(meta, y_va)
+        # refit base learners on the full data for the final predictions
         self.base_full_ = []
         for _, est in self.estimators:
             est_full = clone_estimator(est)
