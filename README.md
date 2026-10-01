@@ -53,6 +53,7 @@ the algorithms are easy to read and extend.
 - **StackingRegressor** — out-of-fold base predictions + a ridge / linear
   meta-learner (parallel to `StackingClassifier`).
 - **BlendingClassifier** — hold-out meta-learning on a validation split.
+- **BlendingRegressor** — hold-out base predictions + a ridge meta-learner (parallel to `BlendingClassifier`).
 
 ## Installation
 
