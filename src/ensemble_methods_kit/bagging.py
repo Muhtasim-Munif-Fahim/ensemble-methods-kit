@@ -8,7 +8,7 @@ import numpy as np
 
 from .utils import DecisionTree, mean_decrease_impurity, r2_score
 
-__all__ = ["BaggingClassifier", "BaggingRegressor"]
+__all__ = ["BaggingClassifier", "BaggingRegressor", "RandomSubspaceClassifier"]
 
 
 class BaggingClassifier:
@@ -339,3 +339,166 @@ class BaggingRegressor:
         if not self.estimators_:
             raise RuntimeError("Estimator is not fitted yet")
         return mean_decrease_impurity(self.estimators_)
+
+
+
+class RandomSubspaceClassifier:
+    """Random Subspace Method ensemble of decision trees (Ho, 1998).
+
+    Each base estimator is trained on a random subset of features drawn once
+    per tree. Sample rows may be bootstrapped or kept as the full training
+    set (``bootstrap=False``, the classic RSM default). Predictions average
+    soft class probabilities across trees, matching
+    :class:`BaggingClassifier`.
+
+    Unlike bagging's ``max_features`` (which only restricts the features
+    considered at each split), the subspace is fixed for the whole tree:
+    every estimator stores its feature indices on
+    :attr:`estimators_features_`.
+
+    Parameters
+    ----------
+    base_estimator :
+        A :class:`DecisionTree` template. ``None`` defaults to a deep tree
+        that uses every feature in its assigned subspace.
+    n_estimators :
+        Number of trees in the ensemble.
+    max_samples :
+        Fraction of training rows drawn per tree when ``bootstrap=True``.
+        Ignored when ``bootstrap=False`` (all rows are used).
+    max_features :
+        Fraction of features assigned to each tree's subspace. Must be in
+        ``(0, 1]``. Values of ``1.0`` give every feature (useful as a
+        bagging baseline).
+    bootstrap :
+        Whether to bootstrap sample rows. Classic Random Subspace uses
+        ``False`` (same samples, different features).
+    random_state :
+        Seed for reproducible feature / row sampling.
+    """
+
+    def __init__(
+        self,
+        base_estimator: Optional[DecisionTree] = None,
+        n_estimators: int = 10,
+        max_samples: float = 1.0,
+        max_features: float = 0.5,
+        bootstrap: bool = False,
+        random_state: Optional[int] = None,
+    ) -> None:
+        if n_estimators < 1:
+            raise ValueError("n_estimators must be at least 1")
+        if not 0.0 < float(max_samples) <= 1.0:
+            raise ValueError("max_samples must be in (0, 1]")
+        if not 0.0 < float(max_features) <= 1.0:
+            raise ValueError("max_features must be in (0, 1]")
+        self.base_estimator = base_estimator
+        self.n_estimators = n_estimators
+        self.max_samples = max_samples
+        self.max_features = max_features
+        self.bootstrap = bootstrap
+        self.random_state = random_state
+        self.estimators_: list = []
+        self.estimators_features_: list = []
+        self.classes_: Optional[np.ndarray] = None
+        self.n_classes_: Optional[int] = None
+        self._n_features_in_: Optional[int] = None
+
+    def _clone_tree(self, seed: int) -> DecisionTree:
+        base = self.base_estimator
+        common = dict(
+            criterion="gini",
+            max_depth=5,
+            min_samples_split=2,
+            min_impurity_decrease=0.0,
+            max_features=None,  # use the full assigned subspace
+            splitter="best",
+            random_state=seed,
+        )
+        if isinstance(base, DecisionTree):
+            common = dict(
+                criterion=base.criterion,
+                max_depth=base.max_depth,
+                min_samples_split=base.min_samples_split,
+                min_impurity_decrease=base.min_impurity_decrease,
+                max_features=None,
+                splitter=getattr(base, "splitter", "best"),
+                random_state=seed,
+            )
+        return DecisionTree(**common)
+
+    def _feature_subset(self, n_features: int, rng: np.random.Generator) -> np.ndarray:
+        k = max(1, int(round(float(self.max_features) * n_features)))
+        k = min(k, n_features)
+        return np.sort(rng.choice(n_features, size=k, replace=False))
+
+    def fit(self, X, y) -> "RandomSubspaceClassifier":
+        X = np.asarray(X, dtype=np.float64)
+        if X.ndim == 1:
+            X = X.reshape(-1, 1)
+        y = np.asarray(y)
+        self.classes_ = np.unique(y)
+        self.n_classes_ = self.classes_.shape[0]
+        self._n_features_in_ = X.shape[1]
+        self.estimators_ = []
+        self.estimators_features_ = []
+        rng = np.random.default_rng(self.random_state)
+        n_samples = X.shape[0]
+        n_features = X.shape[1]
+        n_sub = int(round(n_samples * self.max_samples))
+        n_sub = min(max(n_sub, 1), n_samples)
+        for _ in range(self.n_estimators):
+            feat_idx = self._feature_subset(n_features, rng)
+            if self.bootstrap:
+                idx = rng.integers(0, n_samples, size=n_sub)
+            else:
+                idx = np.arange(n_samples)
+            Xb = X[idx][:, feat_idx]
+            yb = y[idx]
+            tree = self._clone_tree(seed=int(rng.integers(0, 2**31 - 1)))
+            tree.fit(Xb, yb)
+            self.estimators_.append(tree)
+            self.estimators_features_.append(feat_idx)
+        return self
+
+    def predict_proba(self, X) -> np.ndarray:
+        if not self.estimators_:
+            raise RuntimeError("Estimator is not fitted yet")
+        X = np.asarray(X, dtype=np.float64)
+        if X.ndim == 1:
+            X = X.reshape(1, -1)
+        proba = np.mean(
+            [
+                tree.predict_proba(X[:, feat_idx])
+                for tree, feat_idx in zip(self.estimators_, self.estimators_features_)
+            ],
+            axis=0,
+        )
+        return proba
+
+    def predict(self, X) -> np.ndarray:
+        proba = self.predict_proba(X)
+        preds = proba.argmax(axis=1)
+        return self.classes_[preds]
+
+    @property
+    def feature_importances_(self) -> np.ndarray:
+        """Normalized MDI importances remapped onto the original feature space.
+
+        Each tree's importances live in its subspace; they are scattered back
+        into a length-``n_features`` vector, averaged across trees, and
+        renormalized to sum to 1.
+        """
+        if not self.estimators_ or self._n_features_in_ is None:
+            raise RuntimeError("Estimator is not fitted yet")
+        n_features = self._n_features_in_
+        acc = np.zeros(n_features, dtype=np.float64)
+        for tree, feat_idx in zip(self.estimators_, self.estimators_features_):
+            local = mean_decrease_impurity([tree])
+            # mean_decrease_impurity returns length = tree.n_features_in_
+            for j, feat in enumerate(feat_idx):
+                acc[int(feat)] += float(local[j])
+        total = float(acc.sum())
+        if total <= 0.0:
+            return np.full(n_features, 1.0 / n_features, dtype=np.float64)
+        return acc / total

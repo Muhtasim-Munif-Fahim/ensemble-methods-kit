@@ -21,6 +21,7 @@ from . import (
     AdaBoostRegressor,
     BaggingClassifier,
     BaggingRegressor,
+    RandomSubspaceClassifier,
     BlendingClassifier,
     DecisionTree,
     ExtraTreesClassifier,
@@ -109,6 +110,7 @@ def _build_classifiers() -> List[Tuple[str, object]]:
     return [
         ("DecisionTree", DecisionTree(criterion="gini", max_depth=5, random_state=_DEMO_RANDOM_STATE)),
         ("Bagging", BaggingClassifier(n_estimators=25, max_samples=1.0, random_state=_DEMO_RANDOM_STATE)),
+        ("RandomSubspace", RandomSubspaceClassifier(n_estimators=25, max_features=0.5, random_state=_DEMO_RANDOM_STATE)),
         ("RandomForest", RandomForestClassifier(n_estimators=30, max_depth=5, random_state=_DEMO_RANDOM_STATE)),
         ("ExtraTrees", ExtraTreesClassifier(n_estimators=30, max_depth=5, random_state=_DEMO_RANDOM_STATE)),
         (
