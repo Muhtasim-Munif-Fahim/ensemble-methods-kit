@@ -18,10 +18,11 @@ the algorithms are easy to read and extend.
   decision trees. The regressor averages tree predictions. Pass
   `oob_score=True` to record an out-of-bag R² (`oob_score_`) and the
   left-out predictions (`oob_prediction_`).
-- **RandomSubspaceClassifier** — Ho (1998) Random Subspace Method: each
-  tree sees a fixed random feature subset (`max_features` fraction) and,
-  optionally, bootstrap rows. Soft-votes like bagging; stores
-  `estimators_features_` and remapped `feature_importances_`.
+- **RandomSubspaceClassifier / RandomSubspaceRegressor** — Ho (1998) Random
+  Subspace Method: each tree sees a fixed random feature subset
+  (`max_features` fraction) and, optionally, bootstrap rows. The classifier
+  soft-votes like bagging; the regressor averages tree predictions. Both
+  store `estimators_features_` and remapped `feature_importances_`.
 - **RandomForestClassifier / RandomForestRegressor** — bagging with random
   feature sub-sampling (`max_features`: `"sqrt"`, `"log2"`, or an integer
   count). Both expose impurity-based `feature_importances_` (Mean Decrease
