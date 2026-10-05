@@ -2,7 +2,7 @@
 
 The package re-implements common ensemble strategies (bagging, random subspace (classifier and regressor), random forest,
 extremely randomized trees (classifier and regressor), AdaBoost (classifier and regressor), gradient boosting, histogram gradient
-boosting (classifier and regressor), voting, stacking (classifier and regressor) and blending (classifier and regressor)). Bagging and random forest cover
+boosting (classifier and regressor), voting, stacking (classifier and regressor), blending (classifier and regressor), and Rotation Forest). Bagging and random forest cover
 classification and regression. Most estimators sit on a small CART decision
 tree; histogram gradient boosting grows its own binned Newton trees.
 The whole workflow stays dependency-light and easy to follow.
@@ -26,6 +26,7 @@ from .utils import (
     train_test_split,
 )
 from .bagging import BaggingClassifier, BaggingRegressor, RandomSubspaceClassifier, RandomSubspaceRegressor
+from .rotation_forest import RotationForestClassifier
 from .random_forest import RandomForestClassifier, RandomForestRegressor
 from .extra_trees import ExtraTreesClassifier, ExtraTreesRegressor
 from .adaboost import AdaBoostClassifier, AdaBoostRegressor
@@ -56,6 +57,7 @@ __all__ = [
     "BaggingRegressor",
     "RandomSubspaceClassifier",
     "RandomSubspaceRegressor",
+    "RotationForestClassifier",
     "RandomForestClassifier",
     "RandomForestRegressor",
     "ExtraTreesClassifier",

@@ -23,6 +23,10 @@ the algorithms are easy to read and extend.
   (`max_features` fraction) and, optionally, bootstrap rows. The classifier
   soft-votes like bagging; the regressor averages tree predictions. Both
   store `estimators_features_` and remapped `feature_importances_`.
+- **RotationForestClassifier** — Rodriguez, Kuncheva & Alonso (2006) Rotation
+  Forest: each tree is trained in a PCA-rotated feature space built from
+  random feature groups (with class/instance bootstraps). Soft-votes like
+  bagging; stores `rotation_matrices_` and projected `feature_importances_`.
 - **RandomForestClassifier / RandomForestRegressor** — bagging with random
   feature sub-sampling (`max_features`: `"sqrt"`, `"log2"`, or an integer
   count). Both expose impurity-based `feature_importances_` (Mean Decrease
