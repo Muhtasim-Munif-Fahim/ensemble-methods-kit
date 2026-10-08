@@ -63,6 +63,12 @@ the algorithms are easy to read and extend.
   meta-learner (parallel to `StackingClassifier`).
 - **BlendingClassifier** — hold-out meta-learning on a validation split.
 - **BlendingRegressor** — hold-out base predictions + a ridge meta-learner (parallel to `BlendingClassifier`).
+- **EnsembleSelectionClassifier / EnsembleSelectionRegressor** — Caruana et al.
+  (2004) ensemble selection: fit a library of models on a training split, then
+  greedily add (with replacement) whichever model most improves the averaged
+  validation predictions (log-loss / Brier / error, or MSE / MAE). Sorted
+  initialisation (`n_init`), best-of-path truncation (`use_best`), and refit
+  on all data. Exposes `weights_`, `selection_order_`, `validation_scores_`.
 
 ## Installation
 
@@ -140,6 +146,32 @@ print(vote.predict(X_te[:3]))
 ```
 
 
+Let greedy ensemble selection pick weights for a model library (continuing
+the Iris split above). Models that never help get weight zero:
+
+```python
+from ensemble_methods_kit import (
+    DecisionTree,
+    EnsembleSelectionClassifier,
+    ExtraTreesClassifier,
+    RandomForestClassifier,
+)
+
+sel = EnsembleSelectionClassifier(
+    estimators=[
+        ("rf", RandomForestClassifier(n_estimators=25, max_depth=5, random_state=0)),
+        ("et", ExtraTreesClassifier(n_estimators=25, max_depth=5, random_state=0)),
+        ("stump", DecisionTree(max_depth=1, random_state=0)),
+    ],
+    n_iterations=20,
+    metric="log_loss",
+    random_state=0,
+)
+sel.fit(X_tr, y_tr)
+print("selection accuracy:", accuracy_score(y_te, sel.predict(X_te)))
+print("weights:", sel.named_weights_)
+```
+
 Fit a random-forest regressor on a noisy linear target. `max_features`
 controls how many columns each split may use, and `oob_score=True` asks for
 the out-of-bag R² (bootstrap must stay on):
@@ -192,6 +224,7 @@ ensemble-methods-kit/
 │   ├── gradient_boosting.py
 │   ├── histogram_gradient_boosting.py
 │   ├── voting.py
+│   ├── ensemble_selection.py
 │   ├── stacking.py
 │   └── blending.py
 ├── tests/
