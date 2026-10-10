@@ -69,6 +69,14 @@ the algorithms are easy to read and extend.
   validation predictions (log-loss / Brier / error, or MSE / MAE). Sorted
   initialisation (`n_init`), best-of-path truncation (`use_best`), and refit
   on all data. Exposes `weights_`, `selection_order_`, `validation_scores_`.
+- **KNORAClassifier** — Ko, Sabourin & Britto (2008) dynamic ensemble
+  selection. A pool (bagged trees by default, or your own `(name, estimator)`
+  list) is fitted on a training split; at prediction time the `k` nearest
+  points of a held-out DSEL split form each query's region of competence.
+  `method="eliminate"` (KNORA-E) keeps only the models that classify every
+  neighbour correctly (shrinking `k` until an oracle exists);
+  `method="union"` (KNORA-U) weights each model by its correct neighbours.
+  Exposes `competence_weights`, `n_selected`, `dsel_correct_`, `pool_accuracy_`.
 
 ## Installation
 
@@ -225,6 +233,7 @@ ensemble-methods-kit/
 │   ├── histogram_gradient_boosting.py
 │   ├── voting.py
 │   ├── ensemble_selection.py
+│   ├── des.py             # KNORA-E / KNORA-U
 │   ├── stacking.py
 │   └── blending.py
 ├── tests/
