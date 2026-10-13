@@ -2,7 +2,7 @@
 
 The package re-implements common ensemble strategies (bagging, random subspace (classifier and regressor), random forest,
 extremely randomized trees (classifier and regressor), AdaBoost (classifier and regressor), gradient boosting, histogram gradient
-boosting (classifier and regressor), voting, stacking (classifier and regressor), blending (classifier and regressor), Rotation Forest, Caruana ensemble selection, and KNORA dynamic ensemble selection). Bagging and random forest cover
+boosting (classifier and regressor), voting, stacking (classifier and regressor), blending (classifier and regressor), Rotation Forest, Caruana ensemble selection, KNORA dynamic ensemble selection, and Kuncheva diversity measures with diversity-based pruning). Bagging and random forest cover
 classification and regression. Most estimators sit on a small CART decision
 tree; histogram gradient boosting grows its own binned Newton trees.
 The whole workflow stays dependency-light and easy to follow.
@@ -41,6 +41,22 @@ from .histogram_gradient_boosting import (
 from .voting import VotingClassifier, VotingRegressor
 from .ensemble_selection import EnsembleSelectionClassifier, EnsembleSelectionRegressor
 from .des import KNORAClassifier
+from .diversity import (
+    average_pairwise_diversity,
+    correlation_coefficient,
+    disagreement,
+    diversity_prune,
+    diversity_report,
+    double_fault,
+    ensemble_member_predictions,
+    entropy_diversity,
+    interrater_agreement,
+    kohavi_wolpert_variance,
+    majority_vote,
+    oracle_matrix,
+    pairwise_diversity,
+    q_statistic,
+)
 from .stacking import (
     BlendingClassifier,
     BlendingRegressor,
@@ -73,6 +89,20 @@ __all__ = [
     "EnsembleSelectionClassifier",
     "EnsembleSelectionRegressor",
     "KNORAClassifier",
+    "average_pairwise_diversity",
+    "correlation_coefficient",
+    "disagreement",
+    "diversity_prune",
+    "diversity_report",
+    "double_fault",
+    "ensemble_member_predictions",
+    "entropy_diversity",
+    "interrater_agreement",
+    "kohavi_wolpert_variance",
+    "majority_vote",
+    "oracle_matrix",
+    "pairwise_diversity",
+    "q_statistic",
     "StackingClassifier",
     "StackingRegressor",
     "BlendingClassifier",

@@ -77,6 +77,16 @@ the algorithms are easy to read and extend.
   neighbour correctly (shrinking `k` until an oracle exists);
   `method="union"` (KNORA-U) weights each model by its correct neighbours.
   Exposes `competence_weights`, `n_selected`, `dsel_correct_`, `pool_accuracy_`.
+- **Diversity measures & pruning** (`diversity.py`) — Kuncheva & Whitaker
+  (2003) oracle-output diversity: pairwise Q-statistic, correlation (rho),
+  disagreement and double-fault (`pairwise_diversity`,
+  `average_pairwise_diversity`), plus the non-pairwise entropy E,
+  Kohavi-Wolpert variance and inter-rater agreement kappa.
+  `ensemble_member_predictions(model, X)` collects member votes from any
+  fitted ensemble with `estimators_` (handles subspace / rotation members),
+  `diversity_report` summarises everything, and `diversity_prune` greedily
+  keeps `n_select` members trading accuracy against disagreement
+  (`alpha * accuracy + (1 - alpha) * diversity`).
 
 ## Installation
 
@@ -207,6 +217,20 @@ average that vector over their trees (also available as
 `mean_decrease_impurity(estimators)`).
 AdaBoost keeps its own SAMME-weighted split-usage importances.
 
+Measure and prune ensemble diversity:
+
+```python
+from ensemble_methods_kit import (
+    RandomForestClassifier, diversity_prune, diversity_report, ensemble_member_predictions,
+)
+
+rf = RandomForestClassifier(n_estimators=25, random_state=0).fit(X_tr, y_tr)
+P = ensemble_member_predictions(rf, X_val)         # (25, n_val) member votes
+print(diversity_report(P, y_val)["disagreement"])
+pruned = diversity_prune(P, y_val, n_select=7, alpha=0.5)
+print(pruned["selected"], pruned["pruned_accuracy"], pruned["full_accuracy"])
+```
+
 Run the command-line demo (writes `examples/output/demo_report.md`):
 
 ```bash
@@ -234,6 +258,7 @@ ensemble-methods-kit/
 │   ├── voting.py
 │   ├── ensemble_selection.py
 │   ├── des.py             # KNORA-E / KNORA-U
+│   ├── diversity.py       # diversity measures + pruning
 │   ├── stacking.py
 │   └── blending.py
 ├── tests/
