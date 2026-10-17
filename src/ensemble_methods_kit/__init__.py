@@ -2,7 +2,7 @@
 
 The package re-implements common ensemble strategies (bagging, random subspace (classifier and regressor), random forest,
 extremely randomized trees (classifier and regressor), AdaBoost (classifier and regressor), gradient boosting, histogram gradient
-boosting (classifier and regressor), voting, stacking (classifier and regressor), blending (classifier and regressor), Rotation Forest, Caruana ensemble selection, KNORA dynamic ensemble selection, Kuncheva diversity measures with diversity-based pruning, and EasyEnsemble / BalanceCascade for imbalanced classification). Bagging and random forest cover
+boosting (classifier and regressor), voting, stacking (classifier and regressor), blending (classifier and regressor), Rotation Forest, Caruana ensemble selection, KNORA dynamic ensemble selection, OLA/LCA dynamic classifier selection, Kuncheva diversity measures with diversity-based pruning, and EasyEnsemble / BalanceCascade for imbalanced classification). Bagging and random forest cover
 classification and regression. Most estimators sit on a small CART decision
 tree; histogram gradient boosting grows its own binned Newton trees.
 The whole workflow stays dependency-light and easy to follow.
@@ -40,7 +40,7 @@ from .histogram_gradient_boosting import (
 )
 from .voting import VotingClassifier, VotingRegressor
 from .ensemble_selection import EnsembleSelectionClassifier, EnsembleSelectionRegressor
-from .des import KNORAClassifier
+from .des import DCSClassifier, KNORAClassifier
 from .imbalance import BalanceCascadeClassifier, EasyEnsembleClassifier
 from .diversity import (
     average_pairwise_diversity,
@@ -90,6 +90,7 @@ __all__ = [
     "EnsembleSelectionClassifier",
     "EnsembleSelectionRegressor",
     "KNORAClassifier",
+    "DCSClassifier",
     "EasyEnsembleClassifier",
     "BalanceCascadeClassifier",
     "average_pairwise_diversity",

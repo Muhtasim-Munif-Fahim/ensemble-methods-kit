@@ -16,6 +16,17 @@ competence*, and only the pool members that are competent in that region vote.
 
 Selection is local, so different regions of the input space can be handled by
 different pool members, which is where static averaging tends to lose accuracy.
+
+:class:`DCSClassifier` implements the earlier *dynamic classifier selection*
+rules of Woods, Kegelmeyer & Bowyer (1997), which pick the single most locally
+competent pool member per query instead of a sub-ensemble:
+
+- **OLA** (overall local accuracy, ``method="ola"``): competence is the share of
+  the ``k`` neighbours the classifier labels correctly.
+- **LCA** (local class accuracy, ``method="lca"``): let ``w`` be the label the
+  classifier assigns to the query; competence is the share of neighbours the
+  classifier labels ``w`` whose true label is ``w`` (local precision for its
+  own decision).  A classifier that labels no neighbour ``w`` has competence 0.
 """
 
 from __future__ import annotations
@@ -26,7 +37,7 @@ import numpy as np
 
 from .utils import DecisionTree, clone_estimator, train_test_split
 
-__all__ = ["KNORAClassifier"]
+__all__ = ["DCSClassifier", "KNORAClassifier"]
 
 _METHODS = ("eliminate", "union")
 
@@ -103,9 +114,11 @@ class KNORAClassifier:
         self._check_params()
 
     # -- validation -------------------------------------------------------
+    _methods: Tuple[str, ...] = _METHODS
+
     def _check_params(self) -> None:
-        if self.method not in _METHODS:
-            raise ValueError(f"method must be one of {_METHODS}")
+        if self.method not in self._methods:
+            raise ValueError(f"method must be one of {self._methods}")
         if not isinstance(self.k, (int, np.integer)) or self.k < 1:
             raise ValueError("k must be a positive integer")
         if not 0.0 < float(self.dsel_fraction) < 1.0:
@@ -167,7 +180,7 @@ class KNORAClassifier:
             raise ValueError("X and y must have the same number of rows")
         self.classes_ = np.unique(y)
         if self.classes_.shape[0] < 2:
-            raise ValueError("KNORAClassifier needs at least two classes")
+            raise ValueError(f"{type(self).__name__} needs at least two classes")
         self.n_features_in_ = X.shape[1]
         rng = np.random.default_rng(self.random_state)
         split_seed = int(rng.integers(0, 2**31 - 1))
@@ -187,6 +200,8 @@ class KNORAClassifier:
             self._sd = np.ones(X.shape[1])
         self._dsel_Z = (X_ds - self._mu) / self._sd
         preds = np.column_stack([np.asarray(est.predict(X_ds)) for est in self.estimators_])
+        self._dsel_y = y_ds
+        self._dsel_pred = preds
         self.dsel_correct_ = preds == y_ds[:, None]
         self.pool_accuracy_ = self.dsel_correct_.mean(axis=0)
         return self
@@ -248,3 +263,96 @@ class KNORAClassifier:
     def n_selected(self, X) -> np.ndarray:
         """Number of pool members that vote (non-zero weight) for each query."""
         return np.count_nonzero(self.competence_weights(X), axis=1)
+
+
+_DCS_METHODS = ("ola", "lca")
+
+
+class DCSClassifier(KNORAClassifier):
+    """Dynamic classifier selection with OLA or LCA (Woods et al. 1997).
+
+    Shares the pool construction, DSEL split and neighbour search with
+    :class:`KNORAClassifier`, but for each query only the **single** most
+    locally competent pool member decides.  When several members tie for the
+    highest competence (within ``tie_tolerance``) they vote with equal weight,
+    which removes the arbitrary index-order tie-break of the original rule.
+
+    Parameters
+    ----------
+    estimators, n_estimators, max_depth, k, dsel_fraction, standardize, random_state :
+        As in :class:`KNORAClassifier`.
+    method :
+        ``"ola"`` (overall local accuracy, default) or ``"lca"`` (local class
+        accuracy).
+    tie_tolerance :
+        Members whose competence is within this distance of the best one are
+        treated as tied.
+
+    Attributes
+    ----------
+    estimators_, classes_, dsel_correct_, pool_accuracy_ :
+        As in :class:`KNORAClassifier`.
+    """
+
+    _methods = _DCS_METHODS
+
+    def __init__(
+        self,
+        estimators: Optional[Sequence[Tuple[str, object]]] = None,
+        n_estimators: int = 15,
+        max_depth: int = 3,
+        method: str = "ola",
+        k: int = 7,
+        dsel_fraction: float = 0.3,
+        standardize: bool = True,
+        tie_tolerance: float = 1e-12,
+        random_state: Optional[int] = None,
+    ) -> None:
+        self.tie_tolerance = tie_tolerance
+        super().__init__(
+            estimators=estimators,
+            n_estimators=n_estimators,
+            max_depth=max_depth,
+            method=method,
+            k=k,
+            dsel_fraction=dsel_fraction,
+            standardize=standardize,
+            random_state=random_state,
+        )
+
+    def _check_params(self) -> None:
+        super()._check_params()
+        if float(self.tie_tolerance) < 0.0:
+            raise ValueError("tie_tolerance must be non-negative")
+
+    def competences(self, X) -> np.ndarray:
+        """Local competence of every pool member, shape ``(n_samples, n_estimators)``.
+
+        Values are in ``[0, 1]``: OLA accuracy on the region of competence or
+        LCA precision for the label each member assigns to the query.
+        """
+        self._check_fitted()
+        X = self._validate_X(X)
+        nbrs = self._neighbours(X)
+        correct = self.dsel_correct_[nbrs]  # (n, k, m)
+        if self.method == "ola":
+            return correct.mean(axis=1)
+        query_pred = np.column_stack([np.asarray(est.predict(X)) for est in self.estimators_])
+        nbr_pred = self._dsel_pred[nbrs]  # (n, k, m)
+        nbr_true = self._dsel_y[nbrs]  # (n, k)
+        assigned = nbr_pred == query_pred[:, None, :]
+        hits = np.sum(assigned & (nbr_true[:, :, None] == query_pred[:, None, :]), axis=1)
+        counts = assigned.sum(axis=1)
+        out = np.zeros(hits.shape, dtype=np.float64)
+        np.divide(hits, counts, out=out, where=counts > 0)
+        return out
+
+    def competence_weights(self, X) -> np.ndarray:
+        """0/1 mask of the selected (most competent, ties included) members."""
+        comp = self.competences(X)
+        best = comp.max(axis=1, keepdims=True)
+        return (comp >= best - float(self.tie_tolerance)).astype(np.float64)
+
+    def selected_estimator(self, X) -> np.ndarray:
+        """Index of the most competent pool member per query (lowest index on ties)."""
+        return np.argmax(self.competences(X), axis=1)
