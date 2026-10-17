@@ -77,6 +77,14 @@ the algorithms are easy to read and extend.
   neighbour correctly (shrinking `k` until an oracle exists);
   `method="union"` (KNORA-U) weights each model by its correct neighbours.
   Exposes `competence_weights`, `n_selected`, `dsel_correct_`, `pool_accuracy_`.
+- **DCSClassifier** — Woods, Kegelmeyer & Bowyer (1997) dynamic classifier
+  *selection*: same pool / DSEL / neighbour machinery as KNORA, but each query
+  is decided by the **single** most locally competent member.
+  `method="ola"` (overall local accuracy) scores members by their accuracy on
+  the `k` neighbours; `method="lca"` (local class accuracy) scores each member
+  by its local precision for the label it assigns to the query. Members tied
+  for the best competence (within `tie_tolerance`) vote together. Exposes
+  `competences`, `selected_estimator`, `competence_weights`, `n_selected`.
 - **Diversity measures & pruning** (`diversity.py`) — Kuncheva & Whitaker
   (2003) oracle-output diversity: pairwise Q-statistic, correlation (rho),
   disagreement and double-fault (`pairwise_diversity`,
@@ -257,7 +265,7 @@ ensemble-methods-kit/
 │   ├── histogram_gradient_boosting.py
 │   ├── voting.py
 │   ├── ensemble_selection.py
-│   ├── des.py             # KNORA-E / KNORA-U
+│   ├── des.py             # KNORA-E / KNORA-U, OLA / LCA dynamic selection
 │   ├── diversity.py       # diversity measures + pruning
 │   ├── stacking.py
 │   └── blending.py
