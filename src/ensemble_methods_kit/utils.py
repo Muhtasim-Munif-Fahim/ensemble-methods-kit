@@ -697,6 +697,48 @@ class DecisionTree:
                 node = node.right
         return node
 
+    def apply(self, X: ArrayLike) -> np.ndarray:
+        """Index of the leaf each row of ``X`` lands in.
+
+        Leaves are numbered ``0 .. n_leaves - 1`` in depth-first (left before
+        right) order, so indices are stable for a fitted tree.
+        """
+        if self._tree is None:
+            raise RuntimeError("DecisionTree is not fitted yet")
+        X = np.asarray(X, dtype=np.float64)
+        if X.ndim == 1:
+            X = X.reshape(1, -1)
+        leaf_index = getattr(self, "_leaf_index", None)
+        if leaf_index is None or leaf_index[0] is not self._tree:
+            mapping = {}
+            stack = [self._tree]
+            while stack:
+                node = stack.pop()
+                if node.is_leaf:
+                    mapping[id(node)] = len(mapping)
+                else:
+                    stack.append(node.right)
+                    stack.append(node.left)
+            leaf_index = (self._tree, mapping)
+            self._leaf_index = leaf_index
+        mapping = leaf_index[1]
+        return np.array([mapping[id(self._traverse(row))] for row in X], dtype=np.intp)
+
+    @property
+    def n_leaves_(self) -> int:
+        """Number of leaves of the fitted tree."""
+        if self._tree is None:
+            raise RuntimeError("DecisionTree is not fitted yet")
+        count = 0
+        stack = [self._tree]
+        while stack:
+            node = stack.pop()
+            if node.is_leaf:
+                count += 1
+            else:
+                stack.extend((node.left, node.right))
+        return count
+
     def predict(self, X: ArrayLike) -> np.ndarray:
         X = np.asarray(X, dtype=np.float64)
         if X.ndim == 1:

@@ -31,6 +31,20 @@ the algorithms are easy to read and extend.
   feature sub-sampling (`max_features`: `"sqrt"`, `"log2"`, or an integer
   count). Both expose impurity-based `feature_importances_` (Mean Decrease
   Impurity). The regressor accepts the same optional out-of-bag score.
+- **QuantileRegressionForest** — Meinshausen (2006) quantile regression
+  forest.
+  - The fitted trees define nearest-neighbour weights
+    `w_i(x) = mean_t 1{leaf_t(X_i) = leaf_t(x)} / |leaf_t(x)|` over the
+    training targets. Their weighted CDF estimates the full conditional
+    distribution.
+  - `predict_quantiles` and `predict_interval` give distribution-free
+    prediction intervals that widen where the noise does.
+  - `predict` still returns the forest mean.
+  - `oob_predict_quantiles` gives honest out-of-bag intervals for checking
+    calibration.
+  - `leaf_weighting="inbag"` reproduces the forest mean exactly.
+  - Also ships `pinball_loss`, `interval_coverage` and `DecisionTree.apply`
+    (leaf indices).
 - **ExtraTreesClassifier / ExtraTreesRegressor** — extremely randomized trees: random feature
   sub-sampling plus random split thresholds on the shared DecisionTree
   (`splitter="random"`, `bootstrap=False` by default). The regressor uses
@@ -123,6 +137,22 @@ clf = RandomForestClassifier(n_estimators=25, max_depth=5, random_state=0)
 clf.fit(X_tr, y_tr)
 print("accuracy:", accuracy_score(y_te, clf.predict(X_te)))
 print("MDI importances:", clf.feature_importances_)
+```
+
+Prediction intervals from a quantile regression forest (heteroscedastic noise):
+
+```python
+import numpy as np
+from ensemble_methods_kit import QuantileRegressionForest, interval_coverage
+
+rng = np.random.default_rng(0)
+X = rng.uniform(0, 10, (800, 3))
+y = np.sin(X[:, 0]) + (0.1 + 0.3 * X[:, 0]) * rng.normal(size=800)
+qrf = QuantileRegressionForest(n_estimators=100, random_state=0).fit(X[:600], y[:600])
+lo, hi = qrf.predict_interval(X[600:], coverage=0.9)     # wider for large X[:, 0]
+print(interval_coverage(y[600:], lo, hi))                 # ~0.9
+print(qrf.predict_quantiles(X[600:605], [0.1, 0.5, 0.9]))
+oob = qrf.oob_predict_quantiles([0.05, 0.95])             # honest in-sample check
 ```
 
 Continuing the Iris split above, combine heterogeneous classifiers with a
@@ -259,6 +289,7 @@ ensemble-methods-kit/
 │   ├── utils.py           # metrics, split, DecisionTree
 │   ├── bagging.py
 │   ├── random_forest.py
+│   ├── quantile_forest.py # Meinshausen quantile regression forest
 │   ├── extra_trees.py
 │   ├── adaboost.py
 │   ├── gradient_boosting.py
