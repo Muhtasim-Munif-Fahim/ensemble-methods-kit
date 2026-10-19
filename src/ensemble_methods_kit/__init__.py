@@ -2,7 +2,7 @@
 
 The package re-implements common ensemble strategies (bagging, random subspace (classifier and regressor), random forest,
 extremely randomized trees (classifier and regressor), AdaBoost (classifier and regressor), gradient boosting, histogram gradient
-boosting (classifier and regressor), voting, stacking (classifier and regressor), blending (classifier and regressor), Rotation Forest, Caruana ensemble selection, KNORA dynamic ensemble selection, OLA/LCA dynamic classifier selection, Kuncheva diversity measures with diversity-based pruning, and EasyEnsemble / BalanceCascade for imbalanced classification). Bagging and random forest cover
+boosting (classifier and regressor), voting, stacking (classifier and regressor), blending (classifier and regressor), Rotation Forest, Caruana ensemble selection, KNORA dynamic ensemble selection, OLA/LCA dynamic classifier selection, Kuncheva diversity measures with diversity-based pruning, EasyEnsemble / BalanceCascade for imbalanced classification, and Meinshausen quantile regression forests for prediction intervals). Bagging and random forest cover
 classification and regression. Most estimators sit on a small CART decision
 tree; histogram gradient boosting grows its own binned Newton trees.
 The whole workflow stays dependency-light and easy to follow.
@@ -28,6 +28,7 @@ from .utils import (
 from .bagging import BaggingClassifier, BaggingRegressor, RandomSubspaceClassifier, RandomSubspaceRegressor
 from .rotation_forest import RotationForestClassifier
 from .random_forest import RandomForestClassifier, RandomForestRegressor
+from .quantile_forest import QuantileRegressionForest, interval_coverage, pinball_loss
 from .extra_trees import ExtraTreesClassifier, ExtraTreesRegressor
 from .adaboost import AdaBoostClassifier, AdaBoostRegressor
 from .gradient_boosting import (
@@ -79,6 +80,9 @@ __all__ = [
     "RotationForestClassifier",
     "RandomForestClassifier",
     "RandomForestRegressor",
+    "QuantileRegressionForest",
+    "interval_coverage",
+    "pinball_loss",
     "ExtraTreesClassifier",
     "ExtraTreesRegressor",
     "GradientBoostingClassifier",
