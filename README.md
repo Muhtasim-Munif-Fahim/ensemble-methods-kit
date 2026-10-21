@@ -110,6 +110,12 @@ the algorithms are easy to read and extend.
   keeps `n_select` members trading accuracy against disagreement
   (`alpha * accuracy + (1 - alpha) * diversity`).
 
+- **SuperLearnerRegressor / SuperLearnerClassifier** implement the van der Laan, Polley & Hubbard (2007) Super Learner.
+  - Every candidate learner is fit by V-fold cross-validation to get out-of-fold predictions. Ensemble weights are then chosen to minimise the cross-validated risk.
+  - Weight methods: `nnls` (NNLS rescaled to sum to 1, the R `SuperLearner` default), `convex` (simplex-constrained least squares or Brier score), `log_loss` (classifier negative log-likelihood on the simplex) and `discrete` (CV model selection).
+  - Learners with zero weight are not refit. `summary()` lists each learner's CV risk and weight.
+  - Everything, including the Lawson-Hanson NNLS solver, is pure NumPy.
+
 ## Installation
 
 ```bash
@@ -276,6 +282,24 @@ python -m ensemble_methods_kit
 # or, after install:
 ensemble-methods
 ```
+
+### Super Learner
+
+```python
+from ensemble_methods_kit import (SuperLearnerRegressor, RidgeRegression,
+                                  RandomForestRegressor, GradientBoostingRegressor)
+
+sl = SuperLearnerRegressor(
+    [("ridge", RidgeRegression(alpha=1.0)),
+     ("rf", RandomForestRegressor(n_estimators=50, max_depth=6)),
+     ("gbr", GradientBoostingRegressor(n_estimators=100))],
+    method="nnls", cv=10, random_state=0,
+).fit(X_train, y_train)
+sl.summary()              # [{'name', 'cv_risk', 'weight'}, ...]
+y_hat = sl.predict(X_test)
+```
+
+`SuperLearnerClassifier` takes the same arguments and defaults to `method="log_loss"`, which uses convex weights on the predicted probabilities. `cv_risk_` holds each learner's out-of-fold loss, and `cv_predictions_` the full out-of-fold matrix.
 
 ## Project layout
 
