@@ -18,6 +18,8 @@ import numpy as np
 
 from . import (
     AdaBoostClassifier,
+    GentleBoostClassifier,
+    LogitBoostClassifier,
     AdaBoostRegressor,
     BaggingClassifier,
     BaggingRegressor,
@@ -132,6 +134,8 @@ def _build_classifiers() -> List[Tuple[str, object]]:
                 random_state=_DEMO_RANDOM_STATE,
             ),
         ),
+        ("LogitBoost", LogitBoostClassifier(n_estimators=60, learning_rate=0.5, max_depth=2)),
+        ("GentleBoost", GentleBoostClassifier(n_estimators=60, learning_rate=0.5, max_depth=2)),
         (
             "Voting(soft)",
             VotingClassifier(
