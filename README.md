@@ -53,6 +53,16 @@ the algorithms are easy to read and extend.
   learners with a weighted majority vote.
 - **AdaBoostRegressor** — AdaBoost.R2 adaptive boosting of variance-reducing
   decision-tree weak learners with a weighted-median prediction.
+- **LogitBoostClassifier** — LogitBoost (Friedman, Hastie & Tibshirani 2000), which takes
+  Newton steps on the multinomial log-likelihood. Each round fits one weighted
+  least-squares regression tree per class to the clipped working response
+  `(y - p) / (p (1 - p))`, then centres the class contributions. For two classes it
+  reduces exactly to their binary Algorithm 3.
+- **GentleBoostClassifier** — Gentle AdaBoost. Weighted least-squares trees fit
+  `y in {-1, +1}` under `w = exp(-y F)`, and the bounded steps are added to `F`.
+  Multiclass problems use one-vs-rest. Probabilities come from `1 / (1 + exp(-2F))`.
+  Both expose `staged_predict`, `decision_function` and the per-round `train_loss_`.
+  Both are built on `WeightedRegressionTree`, an exact weighted-SSE tree.
 - **GradientBoostingClassifier / Regressor** — additive trees fit on the loss
   gradient (log-loss / least-squares), with an exact scan of each feature.
 - **HistogramGradientBoostingClassifier** — the histogram variant of gradient
@@ -143,6 +153,18 @@ clf = RandomForestClassifier(n_estimators=25, max_depth=5, random_state=0)
 clf.fit(X_tr, y_tr)
 print("accuracy:", accuracy_score(y_te, clf.predict(X_te)))
 print("MDI importances:", clf.feature_importances_)
+```
+
+LogitBoost / Gentle AdaBoost with depth-2 trees:
+
+```python
+from ensemble_methods_kit import GentleBoostClassifier, LogitBoostClassifier
+
+lb = LogitBoostClassifier(n_estimators=150, learning_rate=0.5, max_depth=2).fit(X_tr, y_tr)
+lb.predict_proba(X_te)          # softmax of the additive class scores
+lb.train_loss_[-1]              # training log-loss after the last round
+gb = GentleBoostClassifier(n_estimators=150, learning_rate=0.5).fit(X_tr, y_tr)
+[accuracy_score(y_te, p) for p in gb.staged_predict(X_te)][-1]
 ```
 
 Prediction intervals from a quantile regression forest (heteroscedastic noise):
@@ -316,6 +338,7 @@ ensemble-methods-kit/
 │   ├── quantile_forest.py # Meinshausen quantile regression forest
 │   ├── extra_trees.py
 │   ├── adaboost.py
+│   ├── logitboost.py      # LogitBoost, Gentle AdaBoost, weighted LS tree
 │   ├── gradient_boosting.py
 │   ├── histogram_gradient_boosting.py
 │   ├── voting.py

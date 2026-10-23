@@ -1,7 +1,7 @@
 """ensemble-methods-kit: a from-scratch NumPy toolkit of ensemble learning methods.
 
 The package re-implements common ensemble strategies (bagging, random subspace (classifier and regressor), random forest,
-extremely randomized trees (classifier and regressor), AdaBoost (classifier and regressor), gradient boosting, histogram gradient
+extremely randomized trees (classifier and regressor), AdaBoost (classifier and regressor), LogitBoost and Gentle AdaBoost, gradient boosting, histogram gradient
 boosting (classifier and regressor), voting, stacking (classifier and regressor), blending (classifier and regressor), Rotation Forest, Caruana ensemble selection, KNORA dynamic ensemble selection, OLA/LCA dynamic classifier selection, Kuncheva diversity measures with diversity-based pruning, EasyEnsemble / BalanceCascade for imbalanced classification, Meinshausen quantile regression forests for prediction intervals, and the van der Laan Super Learner). Bagging and random forest cover
 classification and regression. Most estimators sit on a small CART decision
 tree; histogram gradient boosting grows its own binned Newton trees.
@@ -31,6 +31,7 @@ from .random_forest import RandomForestClassifier, RandomForestRegressor
 from .quantile_forest import QuantileRegressionForest, interval_coverage, pinball_loss
 from .extra_trees import ExtraTreesClassifier, ExtraTreesRegressor
 from .adaboost import AdaBoostClassifier, AdaBoostRegressor
+from .logitboost import GentleBoostClassifier, LogitBoostClassifier, WeightedRegressionTree
 from .gradient_boosting import (
     GradientBoostingClassifier,
     GradientBoostingRegressor,
@@ -73,6 +74,9 @@ __version__ = "0.1.0"
 
 __all__ = [
     "__version__",
+    "LogitBoostClassifier",
+    "GentleBoostClassifier",
+    "WeightedRegressionTree",
     "SuperLearnerClassifier",
     "SuperLearnerRegressor",
     "nnls",
