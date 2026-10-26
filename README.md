@@ -126,6 +126,11 @@ the algorithms are easy to read and extend.
   - Learners with zero weight are not refit. `summary()` lists each learner's CV risk and weight.
   - Everything, including the Lawson-Hanson NNLS solver, is pure NumPy.
 
+- **ECOCClassifier** — Dietterich & Bakiri (1995) error-correcting output codes for multiclass problems.
+  - Each class gets a codeword in `{-1, 0, +1}^L`; one binary learner is trained per column (classes coded `0` are left out, Allwein, Schapire & Singer 2000).
+  - Codes: `ovr`, `ovo`, `exhaustive` (all `2^(K-1)-1` dichotomies), random `dense` / `sparse` (best of `n_candidates` by minimum Hamming distance, constant/duplicate columns rejected), or any custom matrix. `make_code_matrix` and `code_min_distance` are exposed.
+  - Decoding: `loss` (exponential loss on margins `2p-1`) or `hamming` (ties broken by margins). `predict_proba` is a softmax over negative decoding losses.
+
 ## Installation
 
 ```bash
@@ -323,6 +328,20 @@ y_hat = sl.predict(X_test)
 
 `SuperLearnerClassifier` takes the same arguments and defaults to `method="log_loss"`, which uses convex weights on the predicted probabilities. `cv_risk_` holds each learner's out-of-fold loss, and `cv_predictions_` the full out-of-fold matrix.
 
+### Error-correcting output codes
+
+```python
+from ensemble_methods_kit import ECOCClassifier, DecisionTree, make_code_matrix, code_min_distance
+
+clf = ECOCClassifier(DecisionTree(max_depth=2), code="dense", code_size=4.0,
+                     decoding="loss", random_state=0).fit(X_train, y_train)
+clf.code_matrix_                 # (n_classes, L) code in {-1, 0, 1}
+code_min_distance(clf.code_matrix_)
+y_hat = clf.predict(X_test)
+```
+
+With weak binary learners, a long random code corrects individual dichotomy errors and usually beats one-vs-rest.
+
 ## Project layout
 
 ```
@@ -339,6 +358,7 @@ ensemble-methods-kit/
 │   ├── extra_trees.py
 │   ├── adaboost.py
 │   ├── logitboost.py      # LogitBoost, Gentle AdaBoost, weighted LS tree
+│   ├── ecoc.py            # error-correcting output codes (ECOC) multiclass reduction
 │   ├── gradient_boosting.py
 │   ├── histogram_gradient_boosting.py
 │   ├── voting.py
