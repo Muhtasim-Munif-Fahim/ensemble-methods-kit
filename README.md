@@ -131,6 +131,11 @@ the algorithms are easy to read and extend.
   - Codes: `ovr`, `ovo`, `exhaustive` (all `2^(K-1)-1` dichotomies), random `dense` / `sparse` (best of `n_candidates` by minimum Hamming distance, constant/duplicate columns rejected), or any custom matrix. `make_code_matrix` and `code_min_distance` are exposed.
   - Decoding: `loss` (exponential loss on margins `2p-1`) or `hamming` (ties broken by margins). `predict_proba` is a softmax over negative decoding losses.
 
+- **MixtureOfExpertsRegressor** — Jordan & Jacobs (1994) mixture of experts trained by EM.
+  - `K` linear (ridge) experts with their own noise variances, combined by a softmax gate `g_k(x)` that is linear in `x`, so the input space is split softly into local regimes.
+  - E-step: posterior responsibilities. M-step: weighted ridge per expert plus a soft-target multinomial-logistic gate fitted by Böhning's quadratic-bound MM step (one fixed `d x d` solve, monotone). The penalised log-likelihood never decreases, and `log_likelihood_` records it.
+  - k-means initialisation on standardised `[X, y]`, `n_init` restarts. Full predictive mixture: `predict`, `predict_std` (law of total variance, captures input-dependent noise), `predict_gates`, `predict_expert_means`, `responsibilities`, `score_samples`.
+
 ## Installation
 
 ```bash
@@ -342,6 +347,20 @@ y_hat = clf.predict(X_test)
 
 With weak binary learners, a long random code corrects individual dichotomy errors and usually beats one-vs-rest.
 
+### Mixture of experts
+
+```python
+from ensemble_methods_kit import MixtureOfExpertsRegressor
+
+moe = MixtureOfExpertsRegressor(n_experts=3, n_init=3, random_state=0).fit(X_train, y_train)
+moe.predict(X_test)            # E[y | x] = sum_k g_k(x) mu_k(x)
+moe.predict_std(X_test)        # predictive std of the Gaussian mixture
+moe.predict_gates(X_test)      # which expert owns which region
+moe.log_likelihood_[-1]        # monotone EM objective
+```
+
+On piecewise-linear or regime-switching data, two or three experts recover the separate slopes and noise levels. A single linear model misses them.
+
 ## Project layout
 
 ```
@@ -359,6 +378,7 @@ ensemble-methods-kit/
 │   ├── adaboost.py
 │   ├── logitboost.py      # LogitBoost, Gentle AdaBoost, weighted LS tree
 │   ├── ecoc.py            # error-correcting output codes (ECOC) multiclass reduction
+│   ├── mixture_of_experts.py # EM-trained Jordan & Jacobs mixture of experts
 │   ├── gradient_boosting.py
 │   ├── histogram_gradient_boosting.py
 │   ├── voting.py

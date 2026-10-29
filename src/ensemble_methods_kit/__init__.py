@@ -2,7 +2,7 @@
 
 The package re-implements common ensemble strategies (bagging, random subspace (classifier and regressor), random forest,
 extremely randomized trees (classifier and regressor), AdaBoost (classifier and regressor), LogitBoost and Gentle AdaBoost, gradient boosting, histogram gradient
-boosting (classifier and regressor), voting, stacking (classifier and regressor), blending (classifier and regressor), Rotation Forest, Caruana ensemble selection, KNORA dynamic ensemble selection, OLA/LCA dynamic classifier selection, Kuncheva diversity measures with diversity-based pruning, EasyEnsemble / BalanceCascade for imbalanced classification, Meinshausen quantile regression forests for prediction intervals, the van der Laan Super Learner, and error-correcting output codes (ECOC) for multiclass reduction). Bagging and random forest cover
+boosting (classifier and regressor), voting, stacking (classifier and regressor), blending (classifier and regressor), Rotation Forest, Caruana ensemble selection, KNORA dynamic ensemble selection, OLA/LCA dynamic classifier selection, Kuncheva diversity measures with diversity-based pruning, EasyEnsemble / BalanceCascade for imbalanced classification, Meinshausen quantile regression forests for prediction intervals, the van der Laan Super Learner, error-correcting output codes (ECOC) for multiclass reduction, and an EM-trained Jordan & Jacobs mixture of experts regressor). Bagging and random forest cover
 classification and regression. Most estimators sit on a small CART decision
 tree; histogram gradient boosting grows its own binned Newton trees.
 The whole workflow stays dependency-light and easy to follow.
@@ -42,6 +42,7 @@ from .histogram_gradient_boosting import (
 )
 from .ecoc import ECOCClassifier, code_min_distance, make_code_matrix
 from .voting import VotingClassifier, VotingRegressor
+from .mixture_of_experts import MixtureOfExpertsRegressor
 from .super_learner import SuperLearnerClassifier, SuperLearnerRegressor, nnls, project_to_simplex
 from .ensemble_selection import EnsembleSelectionClassifier, EnsembleSelectionRegressor
 from .des import DCSClassifier, KNORAClassifier
@@ -100,6 +101,7 @@ __all__ = [
     "HistogramGradientBoostingClassifier",
     "HistogramGradientBoostingRegressor",
     "ECOCClassifier",
+    "MixtureOfExpertsRegressor",
     "make_code_matrix",
     "code_min_distance",
     "VotingClassifier",
