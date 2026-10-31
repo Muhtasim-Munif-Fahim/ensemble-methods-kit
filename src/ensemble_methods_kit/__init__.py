@@ -36,6 +36,7 @@ from .gradient_boosting import (
     GradientBoostingClassifier,
     GradientBoostingRegressor,
 )
+from .dart import DARTClassifier, DARTRegressor
 from .histogram_gradient_boosting import (
     HistogramGradientBoostingClassifier,
     HistogramGradientBoostingRegressor,
@@ -97,6 +98,8 @@ __all__ = [
     "ExtraTreesClassifier",
     "ExtraTreesRegressor",
     "GradientBoostingClassifier",
+    "DARTClassifier",
+    "DARTRegressor",
     "GradientBoostingRegressor",
     "HistogramGradientBoostingClassifier",
     "HistogramGradientBoostingRegressor",
