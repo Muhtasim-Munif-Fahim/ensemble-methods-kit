@@ -361,6 +361,21 @@ moe.log_likelihood_[-1]        # monotone EM objective
 
 On piecewise-linear or regime-switching data, two or three experts recover the separate slopes and noise levels. A single linear model misses them.
 
+### DART (dropout) gradient boosting
+
+`DARTRegressor` / `DARTClassifier` implement DART (Rashmi & Gilad-Bachrach,
+2015): at each stage a random subset of earlier trees is dropped
+(`rate_drop`, `skip_drop`, `one_drop`), the new tree is fit to the ensemble
+without them, and "tree" normalisation rescales weights (new tree
+`eta/(k+eta)`, dropped trees `k/(k+eta)`). `rate_drop=0` reproduces plain
+gradient boosting exactly.
+
+```python
+from ensemble_methods_kit import DARTRegressor
+m = DARTRegressor(n_estimators=100, learning_rate=0.3, rate_drop=0.1, random_state=0).fit(X, y)
+m.tree_weights_, m.n_dropped_
+```
+
 ## Project layout
 
 ```
