@@ -135,6 +135,13 @@ the algorithms are easy to read and extend.
   - `K` linear (ridge) experts with their own noise variances, combined by a softmax gate `g_k(x)` that is linear in `x`, so the input space is split softly into local regimes.
   - E-step: posterior responsibilities. M-step: weighted ridge per expert plus a soft-target multinomial-logistic gate fitted by Böhning's quadratic-bound MM step (one fixed `d x d` solve, monotone). The penalised log-likelihood never decreases, and `log_likelihood_` records it.
   - k-means initialisation on standardised `[X, y]`, `n_init` restarts. Full predictive mixture: `predict`, `predict_std` (law of total variance, captures input-dependent noise), `predict_gates`, `predict_expert_means`, `responsibilities`, `score_samples`.
+- **CascadeForestClassifier** is a gcForest-style deep forest (Zhou & Feng, 2017). Every
+  cascade layer pairs random forests with completely-random (Extra-Trees,
+  `max_features=1`) forests. Their k-fold out-of-fold class-probability vectors are appended
+  to the raw features and passed to the next layer. Layers keep being added until the
+  out-of-fold accuracy stops improving (`early_stopping_rounds`, `tol`). The cascade is then
+  truncated to the best layer, so its depth is learned from the data.
+  `layer_scores_`, `best_layer_` and `layer_proba(X)` expose the per-layer behaviour.
 
 ## Installation
 
@@ -376,6 +383,17 @@ m = DARTRegressor(n_estimators=100, learning_rate=0.3, rate_drop=0.1, random_sta
 m.tree_weights_, m.n_dropped_
 ```
 
+### Cascade (deep) forest
+
+```python
+from ensemble_methods_kit import CascadeForestClassifier
+
+m = CascadeForestClassifier(n_estimators=30, max_layers=10, n_folds=3, random_state=0).fit(X, y)
+m.layer_scores_   # out-of-fold accuracy of each grown layer
+m.best_layer_     # depth kept for prediction
+m.predict_proba(X_test)
+```
+
 ## Project layout
 
 ```
@@ -398,6 +416,7 @@ ensemble-methods-kit/
 │   ├── histogram_gradient_boosting.py
 │   ├── voting.py
 │   ├── ensemble_selection.py
+│   ├── cascade_forest.py  # gcForest-style deep forest
 │   ├── des.py             # KNORA-E / KNORA-U, OLA / LCA dynamic selection
 │   ├── diversity.py       # diversity measures + pruning
 │   ├── stacking.py
