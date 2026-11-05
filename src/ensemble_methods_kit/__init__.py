@@ -2,7 +2,7 @@
 
 The package re-implements common ensemble strategies (bagging, random subspace (classifier and regressor), random forest,
 extremely randomized trees (classifier and regressor), AdaBoost (classifier and regressor), LogitBoost and Gentle AdaBoost, gradient boosting, histogram gradient
-boosting (classifier and regressor), voting, stacking (classifier and regressor), blending (classifier and regressor), Rotation Forest, Caruana ensemble selection, KNORA dynamic ensemble selection, OLA/LCA dynamic classifier selection, Kuncheva diversity measures with diversity-based pruning, EasyEnsemble / BalanceCascade for imbalanced classification, Meinshausen quantile regression forests for prediction intervals, the van der Laan Super Learner, error-correcting output codes (ECOC) for multiclass reduction, an EM-trained Jordan & Jacobs mixture of experts regressor, and a gcForest-style cascade (deep) forest classifier). Bagging and random forest cover
+boosting (classifier and regressor), voting, stacking (classifier and regressor), blending (classifier and regressor), Rotation Forest, Caruana ensemble selection, KNORA dynamic ensemble selection, OLA/LCA dynamic classifier selection, Kuncheva diversity measures with diversity-based pruning, EasyEnsemble / BalanceCascade for imbalanced classification, Meinshausen quantile regression forests for prediction intervals, the van der Laan Super Learner, error-correcting output codes (ECOC) for multiclass reduction, an EM-trained Jordan & Jacobs mixture of experts regressor, a gcForest-style cascade (deep) forest classifier, and Isolation Forest for unsupervised anomaly detection). Bagging and random forest cover
 classification and regression. Most estimators sit on a small CART decision
 tree; histogram gradient boosting grows its own binned Newton trees.
 The whole workflow stays dependency-light and easy to follow.
@@ -29,6 +29,7 @@ from .bagging import BaggingClassifier, BaggingRegressor, RandomSubspaceClassifi
 from .rotation_forest import RotationForestClassifier
 from .random_forest import RandomForestClassifier, RandomForestRegressor
 from .quantile_forest import QuantileRegressionForest, interval_coverage, pinball_loss
+from .isolation_forest import IsolationForest, average_path_length
 from .extra_trees import ExtraTreesClassifier, ExtraTreesRegressor
 from .adaboost import AdaBoostClassifier, AdaBoostRegressor
 from .logitboost import GentleBoostClassifier, LogitBoostClassifier, WeightedRegressionTree
@@ -94,6 +95,8 @@ __all__ = [
     "RandomForestClassifier",
     "RandomForestRegressor",
     "QuantileRegressionForest",
+    "IsolationForest",
+    "average_path_length",
     "interval_coverage",
     "pinball_loss",
     "ExtraTreesClassifier",

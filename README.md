@@ -11,6 +11,10 @@ the algorithms are easy to read and extend.
 
 ## Features
 
+- **IsolationForest** — Liu, Ting & Zhou's unsupervised anomaly detector:
+  random axis-split isolation trees on subsamples, anomaly score
+  `s(x) = 2^(-E[h(x)] / c(psi))`, and an optional `contamination` threshold
+  for `predict`.
 - **DecisionTree** — CART with gini / entropy splits for classification and
   variance reduction for regression, plus feature sub-sampling and Mean
   Decrease Impurity (`feature_importances_`).
@@ -394,6 +398,16 @@ m.best_layer_     # depth kept for prediction
 m.predict_proba(X_test)
 ```
 
+### Isolation Forest
+
+```python
+from ensemble_methods_kit import IsolationForest
+
+iso = IsolationForest(n_estimators=100, max_samples=256, contamination=0.05, random_state=0).fit(X)
+iso.score_samples(X_new)  # in (0, 1]; higher = more anomalous
+iso.predict(X_new)        # 1 = anomaly, 0 = inlier
+```
+
 ## Project layout
 
 ```
@@ -407,6 +421,7 @@ ensemble-methods-kit/
 │   ├── bagging.py
 │   ├── random_forest.py
 │   ├── quantile_forest.py # Meinshausen quantile regression forest
+│   ├── isolation_forest.py # Isolation Forest anomaly detection
 │   ├── extra_trees.py
 │   ├── adaboost.py
 │   ├── logitboost.py      # LogitBoost, Gentle AdaBoost, weighted LS tree
