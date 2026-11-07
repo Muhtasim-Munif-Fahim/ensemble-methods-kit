@@ -71,3 +71,49 @@ def test_easy_ensemble_rejects_single_class():
 def test_balance_cascade_invalid_threshold():
     with pytest.raises(ValueError, match="removal_threshold"):
         BalanceCascadeClassifier(removal_threshold=1.0)
+
+
+def test_rusboost_improves_minority_recall():
+    from ensemble_methods_kit import RUSBoostClassifier
+
+    X, y = _imbalanced_blobs(seed=3, n_maj=200, n_min=40, d=5)
+    # train on all but evaluate minority recall in-sample — RUSBoost should
+    # recover a non-trivial fraction of the rare class.
+    clf = RUSBoostClassifier(n_estimators=40, max_depth=3, random_state=3)
+    clf.fit(X, y)
+    pred = clf.predict(X)
+    min_mask = y == 1
+    recall = (pred[min_mask] == 1).mean()
+    assert recall >= 0.5
+    assert accuracy_score(y, pred) > 0.5
+    assert len(clf.estimators_) >= 1
+    assert len(clf.estimator_weights_) == len(clf.estimators_)
+
+
+def test_rusboost_proba_and_decision():
+    from ensemble_methods_kit import RUSBoostClassifier
+
+    X, y = _imbalanced_blobs(seed=4)
+    clf = RUSBoostClassifier(n_estimators=15, max_depth=1, random_state=4).fit(X, y)
+    proba = clf.predict_proba(X[:8])
+    assert proba.shape == (8, 2)
+    assert np.allclose(proba.sum(axis=1), 1.0, atol=1e-6)
+    assert (proba >= 0).all()
+    scores = clf.decision_function(X[:8])
+    assert scores.shape == (8, 2)
+    assert np.array_equal(clf.predict(X[:8]), clf.classes_[np.argmax(scores, axis=1)])
+
+
+def test_rusboost_rejects_bad_params_and_single_class():
+    from ensemble_methods_kit import RUSBoostClassifier
+
+    with pytest.raises(ValueError):
+        RUSBoostClassifier(n_estimators=0)
+    with pytest.raises(ValueError):
+        RUSBoostClassifier(sampling_strategy=0.0)
+    with pytest.raises(ValueError):
+        RUSBoostClassifier(sampling_strategy="balance")
+    X = np.random.default_rng(0).normal(size=(20, 3))
+    y = np.zeros(20, dtype=int)
+    with pytest.raises(ValueError, match="two classes"):
+        RUSBoostClassifier(n_estimators=5, random_state=0).fit(X, y)

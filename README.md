@@ -445,3 +445,19 @@ ensemble-methods-kit/
 ## License
 
 MIT
+
+## RUSBoost
+
+`RUSBoostClassifier` (Seiffert et al., 2010) runs SAMME AdaBoost on a
+randomly undersampled balanced subset each round, then updates sample
+weights on the full training set. It is a strong baseline for skewed
+binary and multi-class problems.
+
+```python
+from ensemble_methods_kit import RUSBoostClassifier
+
+clf = RUSBoostClassifier(n_estimators=30, max_depth=2, random_state=0)
+clf.fit(X_train, y_train)
+y_hat = clf.predict(X_test)
+```
+
