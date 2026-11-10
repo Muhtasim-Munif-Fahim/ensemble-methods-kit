@@ -2,7 +2,7 @@
 
 The package re-implements common ensemble strategies (bagging, random subspace (classifier and regressor), random forest,
 extremely randomized trees (classifier and regressor), AdaBoost (classifier and regressor), LogitBoost and Gentle AdaBoost, gradient boosting, histogram gradient
-boosting (classifier and regressor), voting, stacking (classifier and regressor), blending (classifier and regressor), Rotation Forest, Caruana ensemble selection, KNORA dynamic ensemble selection, OLA/LCA dynamic classifier selection, Kuncheva diversity measures with diversity-based pruning, EasyEnsemble / BalanceCascade / RUSBoost for imbalanced classification, Meinshausen quantile regression forests for prediction intervals, the van der Laan Super Learner, error-correcting output codes (ECOC) for multiclass reduction, an EM-trained Jordan & Jacobs mixture of experts regressor, a gcForest-style cascade (deep) forest classifier, and Isolation Forest for unsupervised anomaly detection). Bagging and random forest cover
+boosting (classifier and regressor), voting, stacking (classifier and regressor), blending (classifier and regressor), Rotation Forest, Caruana ensemble selection, KNORA dynamic ensemble selection, OLA/LCA dynamic classifier selection, Kuncheva diversity measures with diversity-based pruning, EasyEnsemble / BalanceCascade / RUSBoost for imbalanced classification, Meinshausen quantile regression forests for prediction intervals, the van der Laan Super Learner, error-correcting output codes (ECOC) for multiclass reduction, an EM-trained Jordan & Jacobs mixture of experts regressor, a gcForest-style cascade (deep) forest classifier, Isolation Forest for unsupervised anomaly detection, and Breiman forest proximities with proximity-based outlier scores). Bagging and random forest cover
 classification and regression. Most estimators sit on a small CART decision
 tree; histogram gradient boosting grows its own binned Newton trees.
 The whole workflow stays dependency-light and easy to follow.
@@ -66,6 +66,7 @@ from .diversity import (
     pairwise_diversity,
     q_statistic,
 )
+from .proximity import forest_apply, proximity_matrix, proximity_outlier_scores
 from .stacking import (
     BlendingClassifier,
     BlendingRegressor,
@@ -79,6 +80,9 @@ __version__ = "0.1.0"
 
 __all__ = [
     "__version__",
+    "forest_apply",
+    "proximity_matrix",
+    "proximity_outlier_scores",
     "LogitBoostClassifier",
     "GentleBoostClassifier",
     "WeightedRegressionTree",

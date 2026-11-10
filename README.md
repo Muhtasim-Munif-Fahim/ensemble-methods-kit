@@ -147,6 +147,10 @@ the algorithms are easy to read and extend.
   truncated to the best layer, so its depth is learned from the data.
   `layer_scores_`, `best_layer_` and `layer_proba(X)` expose the per-layer behaviour.
 
+- **Forest proximities** (`proximity_matrix`, `forest_apply`, `proximity_outlier_scores`) follow Breiman & Cutler. They work with any fitted tree ensemble (bagging, random forest, extra trees, quantile forest).
+  - `proximity_matrix(forest, X, Y=None)` gives the fraction of trees in which two rows share a leaf. It is a supervised similarity you can use for clustering, MDS plots or nearest prototypes.
+  - `proximity_outlier_scores(forest, X, y)` computes the raw outlyingness `n / sum_j prox(i, j)^2` over same-class rows, standardised per class by median / MAD. Scores above about 10 flag rows that sit far from the rest of their class, such as mislabeled points.
+
 ## Installation
 
 ```bash
@@ -422,6 +426,7 @@ ensemble-methods-kit/
 │   ├── random_forest.py
 │   ├── quantile_forest.py # Meinshausen quantile regression forest
 │   ├── isolation_forest.py # Isolation Forest anomaly detection
+│   ├── proximity.py       # Breiman forest proximities + outlier scores
 │   ├── extra_trees.py
 │   ├── adaboost.py
 │   ├── logitboost.py      # LogitBoost, Gentle AdaBoost, weighted LS tree
