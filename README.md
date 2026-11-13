@@ -147,6 +147,7 @@ the algorithms are easy to read and extend.
   truncated to the best layer, so its depth is learned from the data.
   `layer_scores_`, `best_layer_` and `layer_proba(X)` expose the per-layer behaviour.
 
+- **SMOTE / SMOTEBoostClassifier** — Chawla et al. (2002) SMOTE oversampling (`smote`, interpolation between same-class nearest neighbours, `"auto"` or ratio strategy, multi-class) and SMOTEBoost (Chawla et al. 2003): fresh synthetic minority samples every SAMME boosting round, with errors and weights computed on the original data only.
 - **Forest proximities** (`proximity_matrix`, `forest_apply`, `proximity_outlier_scores`) follow Breiman & Cutler. They work with any fitted tree ensemble (bagging, random forest, extra trees, quantile forest).
   - `proximity_matrix(forest, X, Y=None)` gives the fraction of trees in which two rows share a leaf. It is a supervised similarity you can use for clustering, MDS plots or nearest prototypes.
   - `proximity_outlier_scores(forest, X, y)` computes the raw outlyingness `n / sum_j prox(i, j)^2` over same-class rows, standardised per class by median / MAD. Scores above about 10 flag rows that sit far from the rest of their class, such as mislabeled points.
@@ -466,3 +467,23 @@ clf.fit(X_train, y_train)
 y_hat = clf.predict(X_test)
 ```
 
+
+## SMOTE and SMOTEBoost
+
+`smote(X, y)` returns the data with synthetic minority rows appended: each
+new point is `x_i + u (x_nn - x_i)` for a random same-class neighbour among
+the `k_neighbors` nearest. `sampling_strategy="auto"` balances every class to
+the majority size; a float `r` adds `round(r * n_c)` rows per non-majority
+class. `SMOTEBoostClassifier` regenerates SMOTE samples in every boosting
+round and trains the weak tree on the weight-resampled original data plus
+those samples; the SAMME error and weight update use the original rows only.
+(The 2003 paper used AdaBoost.M2; SAMME is used here to match `RUSBoostClassifier`.)
+
+```python
+from ensemble_methods_kit import SMOTEBoostClassifier, smote
+
+X_bal, y_bal = smote(X_train, y_train, k_neighbors=5, random_state=0)
+clf = SMOTEBoostClassifier(n_estimators=30, max_depth=1, random_state=0)
+clf.fit(X_train, y_train)
+y_hat = clf.predict(X_test)
+```
